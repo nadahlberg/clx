@@ -173,6 +173,32 @@ class Label(BaseModel):
             return queryset.none()
         return queryset.tags(any=minimal_tag_ids).tags(any=likely_tag_ids)
 
+    def get_minimal_fn(self):
+        minimal_fns = [
+            x.heuristic.get_apply_fn()
+            for x in LabelTag.objects.filter(
+                label=self, heuristic__is_minimal=True
+            )
+        ]
+
+        def minimal_fn(text):
+            return any(f(text) for f in minimal_fns)
+
+        return minimal_fn
+
+    def get_likely_fn(self):
+        likely_fns = [
+            x.heuristic.get_apply_fn()
+            for x in LabelTag.objects.filter(
+                label=self, heuristic__is_likely=True
+            )
+        ]
+
+        def likely_fn(text):
+            return any(f(text) for f in likely_fns)
+
+        return likely_fn
+
     def update_counts(self):
         self.num_excluded = self.excluded_query().count()
         self.num_likely = self.likely_query().count()
@@ -279,12 +305,11 @@ class Label(BaseModel):
         return annos
 
     def load_trainset(self):
+        cols = ["text_hash", "text", "split", "pred", "decision", "reason"]
         data = pd.DataFrame(
-            self.trainset_examples.all().values(
-                "text_hash", "text", "split", "pred", "reason"
-            )
+            self.trainset_examples.all().values(*cols),
+            columns=cols,
         )
-
         annos = self.load_annos()
         flagged_hashes = annos[annos["value"].isna()]["text_hash"].tolist()
         annos = annos[~annos["value"].isna()]
@@ -298,6 +323,16 @@ class Label(BaseModel):
 
         data = data.sample(frac=1, random_state=42)
         data = data.reset_index(drop=True)
+
+        minimal_fn = self.get_minimal_fn()
+        likely_fn = self.get_likely_fn()
+        data["bucket"] = data["text"].apply(
+            lambda x: "excluded"
+            if not minimal_fn(x)
+            else "likely"
+            if likely_fn(x)
+            else "neutral"
+        )
         return data
 
     def update_trainset_preds(self, num_threads=128):
