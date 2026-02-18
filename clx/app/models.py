@@ -963,6 +963,16 @@ class LabelFinetune(BaseModel):
     predicted_at = models.DateTimeField(null=True, blank=True)
 
 
+class LabelQuerystring(BaseModel):
+    """Model for label querystrings."""
+
+    label = models.ForeignKey(
+        Label, on_delete=models.CASCADE, related_name="querystrings"
+    )
+    querystring = models.TextField()
+    num_examples = models.IntegerField(default=30)
+
+
 class DocketEntry(SearchDocumentModel):
     """Docket entry model for main document entries."""
 
