@@ -205,9 +205,10 @@ class Label(BaseModel):
         self.num_neutral = self.neutral_query().count()
         self.save()
 
-    def sample_trainset(self, ratio=1):
+    def sample_trainset(self, data, ratio=1):
         """Sample trainset examples."""
-        data = []
+        new_ids = []
+
         # Sample decision neighbors
         model = self.project.get_search_model()
         for decision in self.decisions.all():
@@ -220,7 +221,7 @@ class Label(BaseModel):
                 semantic_sort=embedding,
                 page_size=int(self.trainset_num_decision_neighbors * ratio),
             )
-            data += [{"id": x["id"]} for x in decision_examples["data"]]
+            new_ids += [x["id"] for x in decision_examples["data"]]
 
         def apply_mesh_sort(queryset, n_examples):
             """Select 10x the number of examples and take most diverse 10%"""
@@ -232,43 +233,57 @@ class Label(BaseModel):
                 np.array(data["embedding"].tolist()), cluster_ks
             )
             data = data.sort_values(by="sort").head(n_examples)
-            return data[["id"]].to_dict("records")
+            return data["id"].tolist()
 
-        # Sample heuristic buckets
-        data += apply_mesh_sort(
-            self.excluded_query(), int(self.trainset_num_excluded * ratio)
+        num_excluded = int(self.trainset_num_excluded * ratio) - len(
+            data[data["bucket"] == "excluded"]
         )
-        data += apply_mesh_sort(
-            self.neutral_query(), int(self.trainset_num_neutral * ratio)
+        num_neutral = int(self.trainset_num_neutral * ratio) - len(
+            data[data["bucket"] == "neutral"]
         )
-        data += apply_mesh_sort(
-            self.likely_query(), int(self.trainset_num_likely * ratio)
+        num_likely = int(self.trainset_num_likely * ratio) - len(
+            data[data["bucket"] == "likely"]
         )
 
-        data = pd.DataFrame(data).drop_duplicates(subset="id").sample(frac=1)
-        return data["id"].tolist()
+        if num_excluded > 0:
+            new_ids += apply_mesh_sort(self.excluded_query(), num_excluded)
+        if num_neutral > 0:
+            new_ids += apply_mesh_sort(self.neutral_query(), num_neutral)
+        if num_likely > 0:
+            new_ids += apply_mesh_sort(self.likely_query(), num_likely)
+
+        model = self.project.get_search_model()
+        cols = ["text", "text_hash"]
+        new_examples = pd.DataFrame(
+            model.objects.filter(id__in=new_ids).values(*cols),
+            columns=cols,
+        )
+        new_examples = new_examples[
+            ~new_examples["text_hash"].isin(data["text_hash"])
+        ]
+        new_examples = new_examples.drop_duplicates(subset="text_hash").sample(
+            frac=1
+        )
+        return new_examples
 
     def update_trainset(self):
-        self.trainset_examples.all().delete()
-        model = self.project.get_search_model()
+        data = self.load_trainset()
 
-        train_ids = self.sample_trainset(ratio=1)
-        train_examples = model.objects.filter(id__in=train_ids).values(
-            "text", "text_hash"
+        train_examples = self.sample_trainset(
+            data[data["split"] == "train"], ratio=1
         )
-        train_examples = pd.DataFrame(train_examples)
         train_examples["split"] = "train"
-
-        eval_ids = self.sample_trainset(ratio=0.2)
-        eval_examples = model.objects.filter(id__in=eval_ids).values(
-            "text", "text_hash"
+        eval_examples = self.sample_trainset(
+            data[data["split"] == "eval"], ratio=0.2
         )
-        eval_examples = pd.DataFrame(eval_examples)
         eval_examples["split"] = "eval"
 
-        trainset = pd.concat([train_examples, eval_examples])
-        trainset = trainset.drop_duplicates(subset="text_hash")
-        rows = trainset.to_dict("records")
+        new_examples = pd.concat([train_examples, eval_examples])
+        new_examples = new_examples[
+            ~new_examples["text_hash"].isin(data["text_hash"])
+        ]
+        new_examples = new_examples.drop_duplicates(subset="text_hash")
+        rows = new_examples.to_dict("records")
         LabelTrainsetExample.objects.bulk_create(
             [LabelTrainsetExample(label_id=self.id, **row) for row in rows],
             batch_size=1000,
@@ -305,21 +320,43 @@ class Label(BaseModel):
         return annos
 
     def load_trainset(self):
-        cols = ["text_hash", "text", "split", "pred", "decision", "reason"]
+        trainset_hashes = list(
+            self.trainset_examples.values_list("text_hash", flat=True)
+        )
+        annos = self.load_annos()
+
+        missing_annos = annos[~annos["text_hash"].isin(trainset_hashes)]
+        missing_annos = missing_annos.drop_duplicates(subset="text_hash")
+        if len(missing_annos):
+            updates = [
+                LabelTrainsetExample(
+                    label_id=self.id,
+                    text_hash=row["text_hash"],
+                    text=row["text"],
+                    split="train",
+                )
+                for row in missing_annos.to_dict("records")
+            ]
+            LabelTrainsetExample.objects.bulk_create(updates, batch_size=1000)
+
+        cols = ["text_hash", "text", "split", "pred", "reason"]
         data = pd.DataFrame(
             self.trainset_examples.all().values(*cols),
             columns=cols,
         )
-        annos = self.load_annos()
+
         flagged_hashes = annos[annos["value"].isna()]["text_hash"].tolist()
         annos = annos[~annos["value"].isna()]
-        annos = annos.rename(columns={"value": "pred"})
-        annos["split"] = "train"
-        data = pd.concat([data, annos])
+        annos = annos[["text_hash", "value"]].rename(
+            columns={"value": "anno_value"}
+        )
+        data = data.merge(annos, on="text_hash", how="left")
 
         if len(data) and "text_hash" in data.columns:
             data = data.drop_duplicates(subset="text_hash", keep="last")
             data = data[~data["text_hash"].isin(flagged_hashes)]
+
+        data["value"] = data["anno_value"].fillna(data["pred"])
 
         data = data.sample(frac=1, random_state=42)
         data = data.reset_index(drop=True)
