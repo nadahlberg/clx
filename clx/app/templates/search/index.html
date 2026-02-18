@@ -616,20 +616,6 @@
                     await this.getLabels();
                     await this.getTags();
                 },
-                async fitPredictor(labelId) {
-                    if (!labelId) return;
-                    await this.apiFetch('predictor/fit/', {
-                        method: 'POST',
-                        body: {
-                            label_id: labelId,
-                            inference_model: this.predictorConfig.inferenceModel,
-                            teacher_model: this.predictorConfig.teacherModel,
-                        },
-                        jobName: 'Fitting Predictor',
-                    });
-                    await this.getLabels();
-                    await this.getTags();
-                },
 
                 // Finetunes
                 async getFinetunes(labelId = null) {

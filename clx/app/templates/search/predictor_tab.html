@@ -2,22 +2,12 @@
     class="flex-1 min-h-0 overflow-y-auto pb-32 px-4 -mx-4"
     x-show="activeTab === 'predictor'" x-cloak
     x-data="{
-        getPredictorStatus() {
-            const latest_decision_updated_at = this.decisions && Object.values(this.decisions).length ? Math.max(...Object.values(this.decisions).map(d => new Date(d.updated_at))) : null;
-            const predictor_updated_at = new Date(this.labels?.[activeLabelId]?.predictor_updated_at);
-            if (!latest_decision_updated_at) return 'no_decisions';
-            if (!predictor_updated_at) return 'no_predictor';
-            if (latest_decision_updated_at > predictor_updated_at) return 'predictor_out_of_date';
-            return 'up_to_date';
-        },
         getTrainsetStatus() {
             const trainset_updated_at = new Date(this.labels?.[activeLabelId]?.trainset_updated_at);
             const trainset_predictions_updated_at = new Date(this.labels?.[activeLabelId]?.trainset_predictions_updated_at);
-            const predictor_updated_at = new Date(this.labels?.[activeLabelId]?.predictor_updated_at);
             if (!trainset_updated_at) return 'no_trainset';
             if (!trainset_predictions_updated_at) return 'no_preds';
             if (trainset_updated_at > trainset_predictions_updated_at) return 'preds_out_of_date';
-            if (predictor_updated_at > trainset_predictions_updated_at) return 'preds_out_of_date';
             return 'up_to_date';
         },
         isFitting() {
@@ -169,61 +159,11 @@
             <!-- Predictor -->
             <div class="flex items-start justify-between gap-3 mb-3">
                 <h3 class="text-base font-medium text-gray-900">Predictor</h3>
-                <div class="text-xs text-gray-600">
-                    <template x-if="labels?.[activeLabelId]?.predictor_updated_at && !isSampling()">
-                        <span x-text="'Updated ' + new Date(labels?.[activeLabelId]?.predictor_updated_at).toLocaleString()"></span>
-                    </template>
-                    <span x-show="isFitting()">
-                        Fitting...
-                    </span>
-                </div>
             </div>
-
-            <!-- Warnings -->
-            <template x-if="['no_decisions', 'no_predictor', 'predictor_out_of_date'].includes(getPredictorStatus())">
-                <div class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    <span x-show="getPredictorStatus() === 'no_decisions'">
-                        This label does not have any decision boundaries yet.
-                    </span>
-                    <span x-show="getPredictorStatus() === 'no_predictor'">
-                        Predictor has not been fit yet.
-                    </span>
-                    <span x-show="getPredictorStatus() === 'predictor_out_of_date'">
-                        New decisions have been made since the predictor was last updated.
-                    </span>
-                </div>
-            </template>
 
             <div class="flex flex-col gap-3">
                 <!-- PredictorConfig -->
                 <div class="flex flex-col gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Models</label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-sm text-gray-700 mb-1">Inference model</label>
-                                        <select
-                                            class="w-full rounded-md ring-1 ring-gray-300 focus:ring-blue-500 text-sm p-2 bg-white"
-                                            x-model="predictorConfig.inferenceModel"
-                                        >
-                                            {% for name, value in label_class.llm_models %}
-                                                <option value="{{ value }}">{{ name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm text-gray-700 mb-1">Teacher model</label>
-                                        <select
-                                            class="w-full rounded-md ring-1 ring-gray-300 focus:ring-blue-500 text-sm p-2 bg-white"
-                                            x-model="predictorConfig.teacherModel"
-                                        >
-                                            {% for name, value in label_class.llm_models %}
-                                                <option value="{{ value }}">{{ name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
-                    </div>
                     <div x-data="{editing: false, newInstructions: ''}">
                         <div class="flex items-center justify-between">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Label Instructions</label>
@@ -296,27 +236,6 @@
                             </div>
                         </div>
                     </div>
-                    <div x-show="labels?.[activeLabelId]?.predictor_data?.state?.signature?.instructions ">
-                        <div class="flex items-center justify-between">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Fitted Instructions</label>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-1">Instructions generated from the DSPy optimization process.</p>
-                        <div class="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-                            <pre class="text-gray-800 text-sm whitespace-pre-wrap break-words" x-text="labels?.[activeLabelId]?.predictor_data?.state?.signature?.instructions || ''"></pre>
-                        </div>
-                    </div>
-                </div>
-                <!-- Buttons -->
-                <div class="flex gap-3 justify-end">
-                    <button
-                        type="button"
-                        class="inline-flex items-center justify-center rounded-md bg-blue-600 px-2 py-1 text-white text-xs hover:bg-blue-700 disabled:opacity-50"
-                        :disabled="!activeLabelId || isFitting()"
-                        @click="await fitPredictor(activeLabelId)"
-                        x-show="!['no_decisions'].includes(getPredictorStatus())"
-                    >
-                        Fit Predictor
-                    </button>
                 </div>
             </div>
         </div>

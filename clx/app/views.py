@@ -73,10 +73,6 @@ def labels_endpoint(request, project_id):
         "num_neutral",
         "num_likely",
         "instructions",
-        "inference_model",
-        "teacher_model",
-        "predictor_data",
-        "predictor_updated_at",
         "trainset_num_excluded",
         "trainset_num_neutral",
         "trainset_num_likely",
@@ -325,20 +321,6 @@ def predictor_update_trainset_preds_endpoint(request, project_id):
     assert label_id, "label_id is required"
     label = Label.objects.get(id=label_id)
     label.update_trainset_preds()
-    return JsonResponse({"ok": True})
-
-
-@csrf_exempt
-@require_POST
-def predictor_fit_endpoint(request, project_id):
-    payload = {} if request.body is None else json.loads(request.body)
-    label_id = payload.get("label_id")
-    assert label_id, "label_id is required"
-    label = Label.objects.get(id=label_id)
-    label.inference_model = payload.get("inference_model")
-    label.teacher_model = payload.get("teacher_model")
-    label.save()
-    label.fit_predictor()
     return JsonResponse({"ok": True})
 
 
