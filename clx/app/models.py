@@ -198,6 +198,15 @@ class Label(BaseModel):
             )
             new_ids += [x["id"] for x in decision_examples["data"]]
 
+        for querystring in self.querystrings.all():
+            num_examples = querystring.num_examples * ratio
+            querystring_examples = model.objects.search(
+                querystring=querystring.querystring,
+                page_size=num_examples,
+                sort="shuffle_sort",
+            )
+            new_ids += [x["id"] for x in querystring_examples["data"]]
+
         def apply_mesh_sort(queryset, n_examples):
             """Select 10x the number of examples and take most diverse 10%"""
             cluster_ks = [10, 10]
