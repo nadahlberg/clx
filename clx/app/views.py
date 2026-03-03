@@ -12,6 +12,7 @@ from .models import (
     LabelDecision,
     LabelFinetune,
     LabelHeuristic,
+    LabelQuerystring,
     LabelTag,
     Project,
 )
@@ -66,7 +67,7 @@ def project_update_instructions_endpoint(request, project_id):
 @require_GET
 def labels_endpoint(request, project_id):
     project = Project.objects.get(id=project_id)
-    labels_qs = Label.objects.filter(project=project).values(
+    labels_query = Label.objects.filter(project=project).values(
         "id",
         "name",
         "num_excluded",
@@ -82,7 +83,18 @@ def labels_endpoint(request, project_id):
         "trainset_predictions_updated_at",
         "trainset_updated_at",
     )
-    labels = {row["id"]: row for row in labels_qs}
+    labels = {row["id"]: {**row, "querystrings": []} for row in labels_query}
+    all_qs = (
+        LabelQuerystring.objects.filter(label__project=project)
+        .values(
+            "label_id",
+            "querystring",
+            "num_examples",
+        )
+        .order_by("created_at")
+    )
+    for qs in all_qs:
+        labels[qs["label_id"]]["querystrings"].append(qs)
     return JsonResponse({"labels": labels})
 
 
@@ -95,6 +107,34 @@ def labels_update_instructions_endpoint(request, project_id):
     label = Label.objects.get(id=label_id, project_id=project_id)
     label.instructions = instructions
     label.save()
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+@require_POST
+def labels_save_querystring_endpoint(request, project_id):
+    payload = {} if request.body is None else json.loads(request.body)
+    label_id = payload.get("label_id")
+    querystring = payload.get("querystring")
+    num_examples = payload.get("num_examples", 50)
+    label = Label.objects.get(id=label_id, project_id=project_id)
+    qs, _ = LabelQuerystring.objects.get_or_create(
+        label=label, querystring=querystring
+    )
+    qs.num_examples = int(num_examples)
+    qs.save()
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+@require_POST
+def labels_delete_querystring_endpoint(request, project_id):
+    payload = {} if request.body is None else json.loads(request.body)
+    label_id = payload.get("label_id")
+    querystring = payload.get("querystring")
+    label = Label.objects.get(id=label_id, project_id=project_id)
+    qs = LabelQuerystring.objects.get(label=label, querystring=querystring)
+    qs.delete()
     return JsonResponse({"ok": True})
 
 

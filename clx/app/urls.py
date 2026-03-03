@@ -33,6 +33,16 @@ urlpatterns = [
         name="labels-update-instructions-endpoint",
     ),
     path(
+        "api/project/<slug:project_id>/labels/save-querystring/",
+        views.labels_save_querystring_endpoint,
+        name="labels-save-querystring-endpoint",
+    ),
+    path(
+        "api/project/<slug:project_id>/labels/delete-querystring/",
+        views.labels_delete_querystring_endpoint,
+        name="labels-delete-querystring-endpoint",
+    ),
+    path(
         "api/project/<slug:project_id>/tags/",
         views.tags_endpoint,
         name="tags-endpoint",
