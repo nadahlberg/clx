@@ -1,3 +1,6 @@
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import lmdb
 import numpy as np
 import pandas as pd
@@ -8,7 +11,8 @@ from django.utils import timezone
 from tqdm import tqdm
 
 from clx import label2slug
-from clx.llm import GEPAPredictor, SingleLabelPredictor, batch_embed, mesh_sort
+from clx.llm import batch_embed, mesh_sort
+from clx.llm.anno_agent import AnnoAgent
 from clx.ml import pipeline, training_run
 from clx.settings import CLX_HOME
 from clx.utils import pd_save_or_append
@@ -84,47 +88,18 @@ class Label(BaseModel):
         Project, on_delete=models.CASCADE, related_name="labels"
     )
     name = models.CharField(max_length=255)
+    instructions = models.TextField(null=True, blank=True)
 
     # Sample counts
     num_excluded = models.IntegerField(default=0)
     num_neutral = models.IntegerField(default=0)
     num_likely = models.IntegerField(default=0)
 
-    # Predictor config
-    llm_models = [
-        ("GPT-5 Mini", "openai/gpt-5-mini"),
-        ("GPT-5", "openai/gpt-5"),
-        ("Gemini 2.5 Flash Lite", "gemini/gemini-2.5-flash-lite"),
-        ("Gemini 2.5 Flash", "gemini/gemini-2.5-flash"),
-        ("Gemini 2.5 Pro", "gemini/gemini-2.5-pro"),
-        ("Qwen 235B-A22B", "bedrock/qwen.qwen3-235b-a22b-2507-v1:0"),
-        (
-            "Claude Sonnet 4.5",
-            "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        ),
-    ]
-    default_inference_model = "openai/gpt-5-mini"
-    default_teacher_model = "openai/gpt-5"
-    instructions = models.TextField(null=True, blank=True)
-    inference_model = models.CharField(
-        max_length=255,
-        choices=llm_models,
-        default=default_inference_model,
-    )
-    teacher_model = models.CharField(
-        max_length=255,
-        choices=llm_models,
-        default=default_teacher_model,
-    )
-    predictor_data = models.JSONField(null=True, blank=True)
-    predictor_updated_at = models.DateTimeField(null=True, blank=True)
-
     # Trainset config
-    trainset_examples_per_heuristic_bucket = models.IntegerField(default=1000)
-    trainset_num_excluded = models.IntegerField(default=1000)
-    trainset_num_neutral = models.IntegerField(default=1000)
-    trainset_num_likely = models.IntegerField(default=1000)
-    trainset_num_decision_neighbors = models.IntegerField(default=50)
+    trainset_num_excluded = models.IntegerField(default=50)
+    trainset_num_neutral = models.IntegerField(default=50)
+    trainset_num_likely = models.IntegerField(default=50)
+    trainset_num_decision_neighbors = models.IntegerField(default=20)
     trainset_updated_at = models.DateTimeField(null=True, blank=True)
     trainset_predictions_updated_at = models.DateTimeField(
         null=True, blank=True
@@ -173,29 +148,83 @@ class Label(BaseModel):
             return queryset.none()
         return queryset.tags(any=minimal_tag_ids).tags(any=likely_tag_ids)
 
+    def get_minimal_fn(self):
+        minimal_fns = [
+            x.heuristic.get_apply_fn()
+            for x in LabelTag.objects.filter(
+                label=self, heuristic__is_minimal=True
+            )
+        ]
+
+        def minimal_fn(text):
+            return any(f(text) for f in minimal_fns)
+
+        return minimal_fn
+
+    def get_likely_fn(self):
+        likely_fns = [
+            x.heuristic.get_apply_fn()
+            for x in LabelTag.objects.filter(
+                label=self, heuristic__is_likely=True
+            )
+        ]
+
+        def likely_fn(text):
+            return any(f(text) for f in likely_fns)
+
+        return likely_fn
+
     def update_counts(self):
         self.num_excluded = self.excluded_query().count()
         self.num_likely = self.likely_query().count()
         self.num_neutral = self.neutral_query().count()
         self.save()
 
-    def sample_trainset(self, ratio=1):
-        """Sample trainset examples."""
-        data = []
+    def update_trainset(self):
+        data = self.load_trainset()
+        model = self.project.get_search_model()
+
+        # Reset predictions for existing anno disagreements
+        needs_corrections = data[
+            data["anno_value"].notna()
+            & data["pred"].notna()
+            & (data["anno_value"] != data["pred"])
+        ]["text_hash"].tolist()
+        if len(needs_corrections):
+            LabelTrainsetExample.objects.filter(
+                label=self, text_hash__in=needs_corrections
+            ).update(pred=None, reason=None)
+
+        new_ids = []
+
         # Sample decision neighbors
         model = self.project.get_search_model()
         for decision in self.decisions.all():
-            embedding = (
-                model.objects.filter(text_hash=decision.text_hash)
-                .first()
-                .embedding.to_list()
-            )
-            decision_examples = model.objects.search(
-                semantic_sort=embedding,
-                page_size=int(self.trainset_num_decision_neighbors * ratio),
-            )
-            data += [{"id": x["id"]} for x in decision_examples["data"]]
+            if not decision.added_to_sample:
+                embedding = (
+                    model.objects.filter(text_hash=decision.text_hash)
+                    .first()
+                    .embedding.to_list()
+                )
+                decision_examples = model.objects.search(
+                    semantic_sort=embedding,
+                    page_size=self.trainset_num_decision_neighbors,
+                )
+                new_ids += [x["id"] for x in decision_examples["data"]]
+                decision.save(added_to_sample=True)
 
+        # Sample on querystring samplers
+        for querystring in self.querystrings.all():
+            if not querystring.added_to_sample:
+                querystring_examples = model.objects.search(
+                    params={"querystring": querystring.querystring},
+                    page_size=querystring.num_examples,
+                    sort=["shuffle_sort", "id"],
+                )
+                new_ids += [x["id"] for x in querystring_examples["data"]]
+                querystring.save(added_to_sample=True)
+
+        # Mesh sort helper
         def apply_mesh_sort(queryset, n_examples):
             """Select 10x the number of examples and take most diverse 10%"""
             cluster_ks = [10, 10]
@@ -206,49 +235,67 @@ class Label(BaseModel):
                 np.array(data["embedding"].tolist()), cluster_ks
             )
             data = data.sort_values(by="sort").head(n_examples)
-            return data[["id"]].to_dict("records")
+            return data["id"].tolist()
 
-        # Sample heuristic buckets
-        data += apply_mesh_sort(
-            self.excluded_query(), int(self.trainset_num_excluded * ratio)
+        # Sample from heuristic buckets
+        num_excluded = self.trainset_num_excluded - len(
+            data[data["bucket"] == "excluded"]
         )
-        data += apply_mesh_sort(
-            self.neutral_query(), int(self.trainset_num_neutral * ratio)
+        num_neutral = self.trainset_num_neutral - len(
+            data[data["bucket"] == "neutral"]
         )
-        data += apply_mesh_sort(
-            self.likely_query(), int(self.trainset_num_likely * ratio)
+        num_likely = self.trainset_num_likely - len(
+            data[data["bucket"] == "likely"]
         )
 
-        data = pd.DataFrame(data).drop_duplicates(subset="id").sample(frac=1)
-        return data["id"].tolist()
+        if num_excluded > 0:
+            new_ids += apply_mesh_sort(self.excluded_query(), num_excluded)
+        if num_neutral > 0:
+            new_ids += apply_mesh_sort(self.neutral_query(), num_neutral)
+        if num_likely > 0:
+            new_ids += apply_mesh_sort(self.likely_query(), num_likely)
 
-    def update_trainset(self):
-        self.trainset_examples.all().delete()
-        model = self.project.get_search_model()
-
-        train_ids = self.sample_trainset(ratio=1)
-        train_examples = model.objects.filter(id__in=train_ids).values(
-            "text", "text_hash"
+        # Get new examples
+        cols = ["text", "text_hash"]
+        new_examples = pd.DataFrame(
+            model.objects.filter(id__in=new_ids).values(*cols),
+            columns=cols,
         )
-        train_examples = pd.DataFrame(train_examples)
+        new_examples = new_examples[
+            ~new_examples["text_hash"].isin(data["text_hash"])
+        ]
+        new_examples = new_examples.drop_duplicates(subset="text_hash")
+        new_examples = new_examples.sample(frac=1)
+
+        # Make train/eval split
+        split = int(len(new_examples) * 0.8)
+        train_examples = new_examples.head(split)
         train_examples["split"] = "train"
-
-        eval_ids = self.sample_trainset(ratio=0.2)
-        eval_examples = model.objects.filter(id__in=eval_ids).values(
-            "text", "text_hash"
-        )
-        eval_examples = pd.DataFrame(eval_examples)
+        eval_examples = new_examples.tail(len(new_examples) - split)
         eval_examples["split"] = "eval"
+        new_examples = pd.concat([train_examples, eval_examples])
 
-        trainset = pd.concat([train_examples, eval_examples])
-        trainset = trainset.drop_duplicates(subset="text_hash")
-        rows = trainset.to_dict("records")
+        new_examples = pd.concat([train_examples, eval_examples])
+
+        # Add to trainset
+        rows = new_examples.to_dict("records")
         LabelTrainsetExample.objects.bulk_create(
             [LabelTrainsetExample(label_id=self.id, **row) for row in rows],
             batch_size=1000,
         )
         self.sync_trainset_tags()
+        self.update_trainset_pred_counts()
         self.trainset_updated_at = timezone.now()
+        self.save()
+
+    def reset_trainset(self):
+        self.trainset_examples.all().delete()
+        self.decisions.all().update(added_to_sample=False)
+        self.querystrings.all().update(added_to_sample=False)
+        self.sync_trainset_tags()
+        self.update_trainset_pred_counts()
+        self.trainset_updated_at = None
+        self.trainset_predictions_updated_at = None
         self.save()
 
     def load_annos(self):
@@ -279,44 +326,73 @@ class Label(BaseModel):
         return annos
 
     def load_trainset(self):
+        trainset_hashes = list(
+            self.trainset_examples.values_list("text_hash", flat=True)
+        )
+        annos = self.load_annos()
+
+        missing_annos = annos[~annos["text_hash"].isin(trainset_hashes)]
+        missing_annos = missing_annos.drop_duplicates(subset="text_hash")
+        if len(missing_annos):
+            updates = [
+                LabelTrainsetExample(
+                    label_id=self.id,
+                    text_hash=row["text_hash"],
+                    text=row["text"],
+                    split="train",
+                )
+                for row in missing_annos.to_dict("records")
+            ]
+            LabelTrainsetExample.objects.bulk_create(updates, batch_size=1000)
+
+        cols = ["text_hash", "text", "split", "pred", "reason"]
         data = pd.DataFrame(
-            self.trainset_examples.all().values(
-                "text_hash", "text", "split", "pred", "reason"
-            )
+            self.trainset_examples.all().values(*cols),
+            columns=cols,
         )
 
-        annos = self.load_annos()
         flagged_hashes = annos[annos["value"].isna()]["text_hash"].tolist()
         annos = annos[~annos["value"].isna()]
-        annos = annos.rename(columns={"value": "pred"})
-        annos["split"] = "train"
-        data = pd.concat([data, annos])
+        annos = annos[["text_hash", "value"]].rename(
+            columns={"value": "anno_value"}
+        )
+        data = data.merge(annos, on="text_hash", how="left")
 
-        if len(data) and "text_hash" in data.columns:
-            data = data.drop_duplicates(subset="text_hash", keep="last")
-            data = data[~data["text_hash"].isin(flagged_hashes)]
+        data["value"] = data["anno_value"].fillna(data["pred"])
+        data.loc[data["text_hash"].isin(flagged_hashes), "value"] = None
 
         data = data.sample(frac=1, random_state=42)
         data = data.reset_index(drop=True)
+
+        minimal_fn = self.get_minimal_fn()
+        likely_fn = self.get_likely_fn()
+        data["bucket"] = data["text"].apply(
+            lambda x: "excluded"
+            if not minimal_fn(x)
+            else "likely"
+            if likely_fn(x)
+            else "neutral"
+        )
         return data
 
-    def update_trainset_preds(self, num_threads=128):
-        predictor = self.predictor
-        trainset = self.load_trainset()
-        preds = predictor.predict(
-            trainset["text"].tolist(), num_threads=num_threads
-        )
-        trainset["pred"] = [x.value for x in preds]
-        trainset["reason"] = [x.reason for x in preds]
+    def update_trainset_preds(self, num_threads=32):
+        data = self.load_trainset()
+        data = data[data["pred"].isna()]
+        texts = data["text"].tolist()
+        preds = self.batch_predict(texts, num_threads=num_threads)
+        data["pred"] = [x.get("value") for x in preds]
+        data["reason"] = [x.get("reason") for x in preds]
         examples = self.trainset_examples.all()
         examples = {e.text_hash: e for e in examples}
-        for row in trainset.to_dict("records"):
+        updates = []
+        for row in data.to_dict("records"):
             if row["text_hash"] in examples:
                 example = examples[row["text_hash"]]
                 example.pred = row["pred"]
                 example.reason = row["reason"]
+                updates.append(example)
         LabelTrainsetExample.objects.bulk_update(
-            list(examples.values()),
+            updates,
             fields=["pred", "reason"],
             batch_size=1000,
         )
@@ -337,20 +413,40 @@ class Label(BaseModel):
             self.trainset_num_negative_preds = 0
         self.save()
 
-    def get_new_predictor(self):
-        return SingleLabelPredictor(
-            label_name=self.name,
-            project_instructions=self.project.instructions,
-            label_instructions=self.instructions,
-            model=self.inference_model,
-        )
+    def load_predictor(self):
+        args = {
+            "label_name": self.name,
+            "project_instructions": self.project.instructions,
+            "label_instructions": self.instructions,
+            "decisions": self.decisions.values("text", "value", "reason"),
+        }
 
-    @property
-    def predictor(self):
-        if self.predictor_data is None:
-            return self.get_new_predictor()
-        else:
-            return GEPAPredictor.from_config(self.predictor_data)
+        def predict_fn(text: str):
+            for _ in range(3):
+                try:
+                    agent = AnnoAgent(**args)
+                    anno = agent(text)
+                    return {
+                        "status": "success",
+                        "value": anno.value,
+                        "reason": anno.reason,
+                    }
+                except Exception as e:
+                    print(f"Error predicting {text}: {e}")
+                    time.sleep(5)
+            return {"status": "error"}
+
+        return predict_fn
+
+    def batch_predict(self, texts: list[str], num_threads: int = 32):
+        predictor = self.load_predictor()
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(predictor, text) for text in texts]
+            for _ in tqdm(
+                as_completed(futures), total=len(futures), desc="Predicting"
+            ):
+                pass
+            return [future.result() for future in futures]
 
     @property
     def trainset_train_tag(self):
@@ -467,23 +563,6 @@ class Label(BaseModel):
             pos_ids = []
         model.bulk_replace_tag(self.trainset_pred_tag, pos_ids)
 
-    def fit_predictor(self):
-        predictor = self.get_new_predictor()
-        examples = self.decisions.values("text", "value", "reason")
-        predictor.fit(
-            examples,
-            num_threads=8,
-            reflection_lm={
-                "model": self.teacher_model,
-                "temperature": 1.0,
-                "max_tokens": 32000,
-            },
-        )
-        self.predictor_data = predictor.config
-        self.predictor_updated_at = timezone.now()
-        self.save()
-        print(predictor.last_cost)
-
     def get_finetune_run_name(self, config_name):
         return f"{self.project_id}__{label2slug(self.name)}__{config_name}"
 
@@ -500,8 +579,8 @@ class Label(BaseModel):
         data = self.load_trainset()
         data = data.sample(frac=1, random_state=42)
         data = (
-            data[["text_hash", "text", "pred", "split"]]
-            .rename(columns={"pred": "label"})
+            data[["text_hash", "text", "value", "split"]]
+            .rename(columns={"value": "label"})
             .dropna()
         )
         data["label"] = data["label"].apply(lambda x: "yes" if x else "no")
@@ -630,10 +709,9 @@ class Label(BaseModel):
 
         Runs the full pipeline in order, but only steps that need updating:
         1. Resample trainset (if decisions newer than trainset)
-        2. Fit predictor (if trainset newer than predictor)
-        3. Run predictions (if predictor newer than predictions)
-        4. Train finetunes (if predictions newer than finetunes)
-        5. Run global corpus predictions (if predict is True and finetune newer than global predictions)
+        2. Run predictions (if trainset newer than predictions)
+        3. Train finetunes (if predictions newer than finetunes)
+        4. Run global corpus predictions (if predict is True and finetune newer than global predictions)
         """
         missing = []
         if not self.heuristics.filter(is_minimal=True).exists():
@@ -672,32 +750,20 @@ class Label(BaseModel):
             self.update_trainset()
             self.refresh_from_db()
 
-        # Step 2: Fit predictor if trainset is newer
+        # Step 2: Run predictions if trainset is newer
         if force or (
             self.trainset_updated_at
             and (
-                not self.predictor_updated_at
-                or self.trainset_updated_at > self.predictor_updated_at
-            )
-        ):
-            print("Step 2: Fitting predictor")
-            self.fit_predictor()
-            self.refresh_from_db()
-
-        # Step 3: Run predictions if predictor is newer
-        if force or (
-            self.predictor_updated_at
-            and (
                 not self.trainset_predictions_updated_at
-                or self.predictor_updated_at
+                or self.trainset_updated_at
                 > self.trainset_predictions_updated_at
             )
         ):
-            print("Step 3: Running predictions")
+            print("Step 2: Running predictions")
             self.update_trainset_preds(num_threads=num_threads)
             self.refresh_from_db()
 
-        # Step 4: Train finetunes if predictions are newer
+        # Step 3: Train finetunes if predictions are newer
         for config_name in finetune_configs:
             finetune = self.fintunes.filter(config_name=config_name).first()
             finetuned_at = finetune.finetuned_at if finetune else None
@@ -709,10 +775,10 @@ class Label(BaseModel):
                     or self.trainset_predictions_updated_at > finetuned_at
                 )
             ):
-                print(f"Step 4: Training finetune: {config_name}")
+                print(f"Step 3: Training finetune: {config_name}")
                 self.train_finetune(config_name)
 
-        # Step 5: Run global corpus predictions if finetune is newer
+        # Step 4: Run global corpus predictions if finetune is newer
         if predict:
             ft = self.fintunes.filter(
                 config_name=self.project.get_search_model().main_finetune_config
@@ -727,7 +793,7 @@ class Label(BaseModel):
                     )
                 )
             ):
-                print("Step 5: Running global predictions")
+                print("Step 4: Running global predictions")
                 self.predict_finetune(force=force)
 
         print("Update complete!")
@@ -770,9 +836,32 @@ class LabelDecision(BaseModel):
     text = models.TextField(null=True, blank=True)
     value = models.BooleanField()
     reason = models.TextField()
+    added_to_sample = models.BooleanField(default=False)
+
+    def save(self, *args, added_to_sample=False, **kwargs):
+        self.added_to_sample = added_to_sample
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ("label", "text_hash")
+
+
+class LabelQuerystring(BaseModel):
+    """Model for label querystrings."""
+
+    label = models.ForeignKey(
+        Label, on_delete=models.CASCADE, related_name="querystrings"
+    )
+    querystring = models.TextField()
+    num_examples = models.IntegerField(default=50)
+    added_to_sample = models.BooleanField(default=False)
+
+    def save(self, *args, added_to_sample=False, **kwargs):
+        self.added_to_sample = added_to_sample
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ("label", "querystring")
 
 
 class LabelHeuristic(BaseModel):
@@ -930,15 +1019,6 @@ class DocketEntry(SearchDocumentModel):
 
     project_id = "docket-entry"
     finetune_configs = {
-        "underfit": {
-            "base_model_name": "answerdotai/ModernBERT-base",
-            "training_args": {
-                "num_train_epochs": 1,
-                "learning_rate": 5e-5,
-                "warmup_ratio": 0.05,
-                "bf16": True,
-            },
-        },
         "main": {
             "base_model_name": "answerdotai/ModernBERT-base",
             "training_args": {

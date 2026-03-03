@@ -454,6 +454,25 @@
                     }
                 },
 
+                async saveQuerystring(labelId, querystring, numExamples) {
+                    await this.apiFetch('labels/save-querystring/', {
+                        method: 'POST',
+                        body: { label_id: labelId, querystring: querystring, num_examples: numExamples },
+                        jobName: 'Saving Querystring',
+                    });
+                    await this.getLabels();
+                    this.activeTab = 'heuristics';
+                },
+
+                async deleteQuerystring(labelId, querystring) {
+                    await this.apiFetch('labels/delete-querystring/', {
+                        method: 'POST',
+                        body: { label_id: labelId, querystring: querystring },
+                        jobName: 'Deleting Querystring',
+                    });
+                    await this.getLabels();
+                },
+
                 // Tags
                 async getTags() {
                     const data = await this.apiFetch('tags/', { method: 'GET' });
@@ -612,20 +631,6 @@
                         method: 'POST',
                         body: { label_id: labelId },
                         jobName: 'Updating Trainset Predictions',
-                    });
-                    await this.getLabels();
-                    await this.getTags();
-                },
-                async fitPredictor(labelId) {
-                    if (!labelId) return;
-                    await this.apiFetch('predictor/fit/', {
-                        method: 'POST',
-                        body: {
-                            label_id: labelId,
-                            inference_model: this.predictorConfig.inferenceModel,
-                            teacher_model: this.predictorConfig.teacherModel,
-                        },
-                        jobName: 'Fitting Predictor',
                     });
                     await this.getLabels();
                     await this.getTags();
