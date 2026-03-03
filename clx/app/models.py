@@ -180,33 +180,51 @@ class Label(BaseModel):
         self.num_neutral = self.neutral_query().count()
         self.save()
 
-    def sample_trainset(self, data, ratio=1):
-        """Sample trainset examples."""
+    def update_trainset(self):
+        data = self.load_trainset()
+        model = self.project.get_search_model()
+
+        # Reset predictions for existing anno disagreements
+        needs_corrections = data[
+            data["anno_value"].notna()
+            & data["pred"].notna()
+            & (data["anno_value"] != data["pred"])
+        ]["text_hash"].tolist()
+        if len(needs_corrections):
+            LabelTrainsetExample.objects.filter(
+                label=self, text_hash__in=needs_corrections
+            ).update(pred=None, reason=None)
+
         new_ids = []
 
         # Sample decision neighbors
         model = self.project.get_search_model()
         for decision in self.decisions.all():
-            embedding = (
-                model.objects.filter(text_hash=decision.text_hash)
-                .first()
-                .embedding.to_list()
-            )
-            decision_examples = model.objects.search(
-                semantic_sort=embedding,
-                page_size=int(self.trainset_num_decision_neighbors * ratio),
-            )
-            new_ids += [x["id"] for x in decision_examples["data"]]
+            if not decision.added_to_sample:
+                embedding = (
+                    model.objects.filter(text_hash=decision.text_hash)
+                    .first()
+                    .embedding.to_list()
+                )
+                decision_examples = model.objects.search(
+                    semantic_sort=embedding,
+                    page_size=self.trainset_num_decision_neighbors,
+                )
+                new_ids += [x["id"] for x in decision_examples["data"]]
+                decision.save(added_to_sample=True)
 
+        # Sample on querystring samplers
         for querystring in self.querystrings.all():
-            num_examples = querystring.num_examples * ratio
-            querystring_examples = model.objects.search(
-                querystring=querystring.querystring,
-                page_size=num_examples,
-                sort="shuffle_sort",
-            )
-            new_ids += [x["id"] for x in querystring_examples["data"]]
+            if not querystring.added_to_sample:
+                querystring_examples = model.objects.search(
+                    params={"querystring": querystring.querystring},
+                    page_size=querystring.num_examples,
+                    sort=["shuffle_sort", "id"],
+                )
+                new_ids += [x["id"] for x in querystring_examples["data"]]
+                querystring.save(added_to_sample=True)
 
+        # Mesh sort helper
         def apply_mesh_sort(queryset, n_examples):
             """Select 10x the number of examples and take most diverse 10%"""
             cluster_ks = [10, 10]
@@ -219,13 +237,14 @@ class Label(BaseModel):
             data = data.sort_values(by="sort").head(n_examples)
             return data["id"].tolist()
 
-        num_excluded = int(self.trainset_num_excluded * ratio) - len(
+        # Sample from heuristic buckets
+        num_excluded = self.trainset_num_excluded - len(
             data[data["bucket"] == "excluded"]
         )
-        num_neutral = int(self.trainset_num_neutral * ratio) - len(
+        num_neutral = self.trainset_num_neutral - len(
             data[data["bucket"] == "neutral"]
         )
-        num_likely = int(self.trainset_num_likely * ratio) - len(
+        num_likely = self.trainset_num_likely - len(
             data[data["bucket"] == "likely"]
         )
 
@@ -236,7 +255,7 @@ class Label(BaseModel):
         if num_likely > 0:
             new_ids += apply_mesh_sort(self.likely_query(), num_likely)
 
-        model = self.project.get_search_model()
+        # Get new examples
         cols = ["text", "text_hash"]
         new_examples = pd.DataFrame(
             model.objects.filter(id__in=new_ids).values(*cols),
@@ -245,35 +264,38 @@ class Label(BaseModel):
         new_examples = new_examples[
             ~new_examples["text_hash"].isin(data["text_hash"])
         ]
-        new_examples = new_examples.drop_duplicates(subset="text_hash").sample(
-            frac=1
-        )
-        return new_examples
+        new_examples = new_examples.drop_duplicates(subset="text_hash")
+        new_examples = new_examples.sample(frac=1)
 
-    def update_trainset(self):
-        data = self.load_trainset()
-
-        train_examples = self.sample_trainset(
-            data[data["split"] == "train"], ratio=1
-        )
+        # Make train/eval split
+        split = int(len(new_examples) * 0.8)
+        train_examples = new_examples.head(split)
         train_examples["split"] = "train"
-        eval_examples = self.sample_trainset(
-            data[data["split"] == "eval"], ratio=0.2
-        )
+        eval_examples = new_examples.tail(len(new_examples) - split)
         eval_examples["split"] = "eval"
+        new_examples = pd.concat([train_examples, eval_examples])
 
         new_examples = pd.concat([train_examples, eval_examples])
-        new_examples = new_examples[
-            ~new_examples["text_hash"].isin(data["text_hash"])
-        ]
-        new_examples = new_examples.drop_duplicates(subset="text_hash")
+
+        # Add to trainset
         rows = new_examples.to_dict("records")
         LabelTrainsetExample.objects.bulk_create(
             [LabelTrainsetExample(label_id=self.id, **row) for row in rows],
             batch_size=1000,
         )
         self.sync_trainset_tags()
+        self.update_trainset_pred_counts()
         self.trainset_updated_at = timezone.now()
+        self.save()
+
+    def reset_trainset(self):
+        self.trainset_examples.all().delete()
+        self.decisions.all().update(added_to_sample=False)
+        self.querystrings.all().update(added_to_sample=False)
+        self.sync_trainset_tags()
+        self.update_trainset_pred_counts()
+        self.trainset_updated_at = None
+        self.trainset_predictions_updated_at = None
         self.save()
 
     def load_annos(self):
@@ -336,11 +358,8 @@ class Label(BaseModel):
         )
         data = data.merge(annos, on="text_hash", how="left")
 
-        if len(data) and "text_hash" in data.columns:
-            data = data.drop_duplicates(subset="text_hash", keep="last")
-            data = data[~data["text_hash"].isin(flagged_hashes)]
-
         data["value"] = data["anno_value"].fillna(data["pred"])
+        data.loc[data["text_hash"].isin(flagged_hashes), "value"] = None
 
         data = data.sample(frac=1, random_state=42)
         data = data.reset_index(drop=True)
@@ -817,9 +836,32 @@ class LabelDecision(BaseModel):
     text = models.TextField(null=True, blank=True)
     value = models.BooleanField()
     reason = models.TextField()
+    added_to_sample = models.BooleanField(default=False)
+
+    def save(self, *args, added_to_sample=False, **kwargs):
+        self.added_to_sample = added_to_sample
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ("label", "text_hash")
+
+
+class LabelQuerystring(BaseModel):
+    """Model for label querystrings."""
+
+    label = models.ForeignKey(
+        Label, on_delete=models.CASCADE, related_name="querystrings"
+    )
+    querystring = models.TextField()
+    num_examples = models.IntegerField(default=50)
+    added_to_sample = models.BooleanField(default=False)
+
+    def save(self, *args, added_to_sample=False, **kwargs):
+        self.added_to_sample = added_to_sample
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ("label", "querystring")
 
 
 class LabelHeuristic(BaseModel):
@@ -970,16 +1012,6 @@ class LabelFinetune(BaseModel):
     eval_results = models.JSONField(null=True, blank=True)
     finetuned_at = models.DateTimeField(null=True, blank=True)
     predicted_at = models.DateTimeField(null=True, blank=True)
-
-
-class LabelQuerystring(BaseModel):
-    """Model for label querystrings."""
-
-    label = models.ForeignKey(
-        Label, on_delete=models.CASCADE, related_name="querystrings"
-    )
-    querystring = models.TextField()
-    num_examples = models.IntegerField(default=30)
 
 
 class DocketEntry(SearchDocumentModel):
