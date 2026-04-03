@@ -1,9 +1,9 @@
+import argparse
 import ast
 import os
 import time
 import urllib.parse
 
-import click
 import pandas as pd
 import requests
 from tqdm import tqdm
@@ -399,16 +399,7 @@ def import_docket_sample(batch_size=500000):
     DocketEntryShort.guarantee_tags_rows()
 
 
-@click.command()
-@click.option(
-    "do_import", "--import", is_flag=True, help="Import the docket sample"
-)
-@click.option(
-    "--skip-cached-steps",
-    is_flag=True,
-    help="Instead of downloading the cached data, this will re-run the data generation pipeline from scratch.",
-)
-def generate_docket_sample(do_import, skip_cached_steps):
+def main(do_import, skip_cached_steps):
     """Prepare a sample of dockets for use in the application."""
     DOCKET_SAMPLE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -433,3 +424,22 @@ def generate_docket_sample(do_import, skip_cached_steps):
         download_docket_sample()
     else:
         import_docket_sample()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Prepare a sample of dockets for use in the application."
+    )
+    parser.add_argument(
+        "--import",
+        dest="do_import",
+        action="store_true",
+        help="Import the docket sample",
+    )
+    parser.add_argument(
+        "--skip-cached-steps",
+        action="store_true",
+        help="Instead of downloading the cached data, this will re-run the data generation pipeline from scratch.",
+    )
+    args = parser.parse_args()
+    main(args.do_import, args.skip_cached_steps)
