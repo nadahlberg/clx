@@ -4,7 +4,6 @@ from .cache_datasets import cache_datasets
 from .cleanup import cleanup
 from .config import config
 from .dump_labels import dump_labels
-from .generate_docket_sample import generate_docket_sample
 from .manage import manage
 from .predict_scales import predict_scales
 from .train import train
@@ -23,4 +22,3 @@ cli.add_command(train)
 cli.add_command(cleanup)
 cli.add_command(dump_labels)
 cli.add_command(predict_scales)
-cli.add_command(generate_docket_sample)
