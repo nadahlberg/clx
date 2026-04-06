@@ -9,8 +9,8 @@ You are working on the label "{label_name}".
 """
 
 
-class AnnoAgent(Agent):
-    """A thread-backed annotation agent that persists messages to the DB."""
+class CLXAgent(Agent):
+    """A thread-backed agent that persists messages to the DB."""
 
     def __init__(self, thread, **kwargs):
         self.thread = thread
