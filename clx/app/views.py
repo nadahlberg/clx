@@ -1,6 +1,5 @@
 import json
 
-from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
@@ -65,10 +64,13 @@ def _filtered_documents(project, request):
 def project_docs_api(request, project_id):
     """GET: paginated documents for a project."""
     project = get_object_or_404(Project, id=project_id)
-    page_number = request.GET.get("page", 1)
+    page_number = max(1, int(request.GET.get("page", 1)))
     documents = _filtered_documents(project, request)
-    paginator = Paginator(documents, DOCS_PER_PAGE)
-    page = paginator.get_page(page_number)
+    # Fetch one extra to detect if there's a next page, avoiding COUNT query.
+    offset = (page_number - 1) * DOCS_PER_PAGE
+    batch = list(documents[offset : offset + DOCS_PER_PAGE + 1])
+    has_next = len(batch) > DOCS_PER_PAGE
+    page_docs = batch[:DOCS_PER_PAGE]
     return JsonResponse(
         {
             "documents": [
@@ -78,10 +80,10 @@ def project_docs_api(request, project_id):
                     "text_prefix": d.text_prefix,
                     "meta": d.meta,
                 }
-                for d in page
+                for d in page_docs
             ],
-            "page": page.number,
-            "total_pages": paginator.num_pages,
+            "page": page_number,
+            "has_next": has_next,
         }
     )
 

@@ -6,7 +6,7 @@
 <div x-data="{
          documents: [],
          page: 1,
-         totalPages: 1,
+         hasNext: false,
          totalCount: null,
          countLoading: false,
          loading: true,
@@ -30,7 +30,7 @@
                  .then(data => {
                      this.documents = data.documents;
                      this.page = data.page;
-                     this.totalPages = data.total_pages;
+                     this.hasNext = data.has_next;
                      this.loading = false;
                  })
                  .catch(() => { this.loading = false; });
@@ -113,21 +113,21 @@
                 </div>
 
                 <!-- Pagination -->
-                <div x-show="totalPages > 1" class="flex items-center justify-center gap-3 pt-4 pb-2">
+                <div x-show="page > 1 || hasNext" class="flex items-center justify-center gap-3 pt-4 pb-2">
                     <button @click="page--; fetchDocs()"
                             :disabled="page <= 1"
                             class="px-3 py-1.5 text-xs rounded-md border border-border transition-colors"
                             :class="page <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
-                        Previous
+                        <i class="fas fa-chevron-left mr-1"></i> Previous
                     </button>
                     <span class="text-xs text-muted-foreground">
-                        Page <span x-text="page"></span> of <span x-text="totalPages"></span>
+                        Page <span x-text="page"></span>
                     </span>
                     <button @click="page++; fetchDocs()"
-                            :disabled="page >= totalPages"
+                            :disabled="!hasNext"
                             class="px-3 py-1.5 text-xs rounded-md border border-border transition-colors"
-                            :class="page >= totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
-                        Next
+                            :class="!hasNext ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
+                        Next <i class="fas fa-chevron-right ml-1"></i>
                     </button>
                 </div>
             </div>
