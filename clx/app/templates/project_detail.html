@@ -44,6 +44,7 @@
              this.activeThread = thread;
              this.selectedModel = thread.model;
              this.chatMessages = [];
+             this.chatSending = this._sendingThreadId === thread.id;
              fetch('/api/projects/{{ project.id }}/threads/' + thread.id + '/messages')
                  .then(r => r.json())
                  .then(data => {
@@ -73,21 +74,30 @@
              this._doSend(content);
          },
          _doSend(content) {
+             const threadId = this.activeThread.id;
              this.chatMessages.push({role: 'user', content: content});
              this.chatInput = '';
+             this._sendingThreadId = threadId;
              this.$nextTick(() => { this.scrollChat(); });
-             fetch('/api/projects/{{ project.id }}/threads/' + this.activeThread.id + '/send', {
+             fetch('/api/projects/{{ project.id }}/threads/' + threadId + '/send', {
                  method: 'POST',
                  headers: {'Content-Type': 'application/json'},
                  body: JSON.stringify({content})
              }).then(r => r.json()).then(data => {
-                 this.chatMessages.push(data.response);
                  // Update thread preview in sidebar
-                 const t = this.threads.find(t => t.id === this.activeThread.id);
+                 const t = this.threads.find(t => t.id === threadId);
                  if (t) t.preview = data.response.content.substring(0, 100);
-                 this.chatSending = false;
-                 this.$nextTick(() => { this.scrollChat(); });
-             }).catch(() => { this.chatSending = false; });
+                 // Only update chat UI if still viewing the same thread
+                 if (this.activeThread && this.activeThread.id === threadId) {
+                     this.chatMessages.push(data.response);
+                     this.chatSending = false;
+                     this.$nextTick(() => { this.scrollChat(); });
+                 }
+                 if (this._sendingThreadId === threadId) this._sendingThreadId = null;
+             }).catch(() => {
+                 if (this._sendingThreadId === threadId) this._sendingThreadId = null;
+                 if (this.activeThread && this.activeThread.id === threadId) this.chatSending = false;
+             });
          },
          scrollChat() {
              const el = document.getElementById('chat-scroll');
@@ -209,7 +219,7 @@
             <!-- Agent tab: Thread history -->
             <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel">
                 <!-- New thread button -->
-                <button @click="activeThread = null; chatMessages = []"
+                <button @click="activeThread = null; chatMessages = []; chatSending = false"
                         class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors flex items-center gap-2 shrink-0">
                     <i class="fas fa-plus text-gray-400 text-xs"></i>
                     <span class="text-sm text-gray-500">New thread</span>
