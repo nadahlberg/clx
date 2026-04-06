@@ -340,7 +340,7 @@
                             <!-- Send button -->
                             <button @click="sendMessage()"
                                     :disabled="!chatInput.trim() || chatSending"
-                                    class="p-1.5 rounded-md transition-colors"
+                                    class="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
                                     :class="chatInput.trim() && !chatSending ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'">
                                 <i class="fas fa-arrow-up text-xs"></i>
                             </button>
