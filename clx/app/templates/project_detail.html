@@ -345,16 +345,48 @@
                                 <!-- Assistant message with content -->
                                 <template x-if="msg.role === 'assistant' && msg.content">
                                     <div class="flex justify-start">
-                                        <div class="max-w-[80%] rounded-lg px-4 py-2.5 bg-gray-100 text-gray-800">
-                                            <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                        <div class="max-w-[80%]">
+                                            <!-- Thinking block (collapsible) -->
+                                            <template x-if="msg.reasoning_content">
+                                                <div class="mb-1.5" x-data="{ expanded: false }">
+                                                    <button @click="expanded = !expanded"
+                                                            class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-1">
+                                                        <i class="fas fa-lightbulb text-[10px]"></i>
+                                                        <span>Thinking</span>
+                                                        <i class="fas text-[10px]" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                                    </button>
+                                                    <div x-show="expanded" x-cloak
+                                                         class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
+                                                        <p class="text-xs text-amber-900 whitespace-pre-wrap" x-text="msg.reasoning_content"></p>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <div class="rounded-lg px-4 py-2.5 bg-gray-100 text-gray-800">
+                                                <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                            </div>
                                         </div>
                                     </div>
                                 </template>
 
-                                <!-- Assistant tool calls -->
+                                <!-- Assistant tool calls (may also have thinking) -->
                                 <template x-if="msg.role === 'assistant' && msg.tool_calls">
                                     <div class="flex justify-start">
                                         <div class="max-w-[80%] space-y-1.5">
+                                            <!-- Thinking block before tool calls -->
+                                            <template x-if="msg.reasoning_content">
+                                                <div x-data="{ expanded: false }">
+                                                    <button @click="expanded = !expanded"
+                                                            class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-1">
+                                                        <i class="fas fa-lightbulb text-[10px]"></i>
+                                                        <span>Thinking</span>
+                                                        <i class="fas text-[10px]" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                                    </button>
+                                                    <div x-show="expanded" x-cloak
+                                                         class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
+                                                        <p class="text-xs text-amber-900 whitespace-pre-wrap" x-text="msg.reasoning_content"></p>
+                                                    </div>
+                                                </div>
+                                            </template>
                                             <template x-for="tc in msg.tool_calls" :key="tc.id">
                                                 <div>
                                                     <!-- AskUser tool call -->
