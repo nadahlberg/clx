@@ -70,3 +70,13 @@ class UpdateProjectInstructions(Tool):
             project.instructions = self.content
         project.save(update_fields=["instructions", "updated_at"])
         return f"Project instructions updated ({self.mode})."
+
+
+class AskUser(Tool):
+    """Ask the user a question with proposed answer options. Use this when you need clarification or want the user to choose between options. The question and options will be presented to the user in an interactive card."""
+
+    question: str = Field(description="The question to ask the user")
+    options: list[str] = Field(description="A list of proposed answer options")
+
+    def __call__(self, agent):
+        return "This question will be presented to the user."

@@ -1,5 +1,5 @@
 from clx.app.models import Message
-from clx.app.tools import Search, UpdateLabelInstructions, UpdateProjectInstructions
+from clx.app.tools import AskUser, Search, UpdateLabelInstructions, UpdateProjectInstructions
 from clx.llm.agent import Agent
 
 SYSTEM_PROMPT_TEMPLATE = """\
@@ -30,7 +30,7 @@ LABEL_INSTRUCTIONS_BLOCK = """\
 class CLXAgent(Agent):
     """A thread-backed agent that persists messages to the DB."""
 
-    default_tools = [Search, UpdateLabelInstructions, UpdateProjectInstructions]
+    default_tools = [Search, UpdateLabelInstructions, UpdateProjectInstructions, AskUser]
 
     def __init__(self, thread, **kwargs):
         self.thread = thread

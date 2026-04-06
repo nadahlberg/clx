@@ -356,18 +356,41 @@
                                     <div class="flex justify-start">
                                         <div class="max-w-[80%] space-y-1.5">
                                             <template x-for="tc in msg.tool_calls" :key="tc.id">
-                                                <div class="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-border rounded-md px-3 py-2">
-                                                    <i class="fas fa-wrench text-gray-400"></i>
-                                                    <span class="font-medium text-gray-600" x-text="tc.function.name"></span>
-                                                    <span class="text-gray-400 truncate max-w-[200px]" x-text="tc.function.arguments"></span>
+                                                <div>
+                                                    <!-- AskUser tool call -->
+                                                    <template x-if="tc.function.name === 'AskUser'">
+                                                        <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                                                            <p class="text-sm font-medium text-gray-800 mb-2" x-text="JSON.parse(tc.function.arguments).question"></p>
+                                                            <div class="flex flex-wrap gap-1.5">
+                                                                <template x-for="opt in JSON.parse(tc.function.arguments).options" :key="opt">
+                                                                    <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + opt; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } })"
+                                                                            class="px-3 py-1.5 text-xs rounded-md border border-blue-300 bg-white text-blue-700 hover:bg-blue-100 transition-colors">
+                                                                        <span x-text="opt"></span>
+                                                                    </button>
+                                                                </template>
+                                                                <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + ''; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.focus(); } })"
+                                                                        class="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-100 transition-colors">
+                                                                    <i class="fas fa-pen text-[10px] mr-1"></i> Type something else
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    <!-- Other tool calls -->
+                                                    <template x-if="tc.function.name !== 'AskUser'">
+                                                        <div class="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-border rounded-md px-3 py-2">
+                                                            <i class="fas fa-wrench text-gray-400"></i>
+                                                            <span class="font-medium text-gray-600" x-text="tc.function.name"></span>
+                                                            <span class="text-gray-400 truncate max-w-[200px]" x-text="tc.function.arguments"></span>
+                                                        </div>
+                                                    </template>
                                                 </div>
                                             </template>
                                         </div>
                                     </div>
                                 </template>
 
-                                <!-- Tool response -->
-                                <template x-if="msg.role === 'tool'">
+                                <!-- Tool response (hide AskUser responses) -->
+                                <template x-if="msg.role === 'tool' && msg.name !== 'AskUser'">
                                     <div class="flex justify-start">
                                         <div class="max-w-[80%] bg-gray-50 border border-border rounded-md px-3 py-2">
                                             <div class="flex items-center gap-1.5 mb-1">
@@ -390,7 +413,8 @@
                 <!-- Chat input -->
                 <div class="shrink-0 px-4 pb-4 pt-2">
                     <div class="border border-border rounded-lg bg-surface focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
-                        <textarea x-model="chatInput"
+                        <textarea id="chat-input"
+                                  x-model="chatInput"
                                   @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
                                   @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 160) + 'px'"
                                   rows="1"
