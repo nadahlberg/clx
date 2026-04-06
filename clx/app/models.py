@@ -3,10 +3,12 @@ import random
 from io import StringIO
 
 import pandas as pd
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils import timezone
 from django_shortuuid.fields import ShortUUIDField
 from postgres_copy import CopyManager
+from shortuuid import uuid
 
 from clx.utils import generate_hash
 
@@ -37,14 +39,37 @@ class Project(Base):
         """Bulk-insert documents using django-postgres-copy.
 
         Args:
-            docs: Either a list of strings (text only) or a list of
-                  dicts with 'text' and optionally 'meta' keys.
+            docs: Either a DataFrame with a 'text' column, a list of strings
+                  (text only), or a list of dicts with 'text' and optionally
+                  'meta' keys.
         """
-        if not docs:
+        if docs is None:
             return
 
         # Normalize input
-        if isinstance(docs[0], str):
+        if isinstance(docs, pd.DataFrame):
+            if docs.empty:
+                return
+            if "text" not in docs.columns:
+                raise ValueError(
+                    "DataFrame input must include a 'text' column"
+                )
+
+            meta_columns = [col for col in docs.columns if col != "text"]
+            docs = [
+                {
+                    "text": row["text"],
+                    "meta": {
+                        key: value
+                        for key, value in row[meta_columns].items()
+                        if pd.notna(value)
+                    },
+                }
+                for _, row in docs.iterrows()
+            ]
+        elif not docs:
+            return
+        elif isinstance(docs[0], str):
             docs = [{"text": t, "meta": {}} for t in docs]
         else:
             docs = [
@@ -53,6 +78,7 @@ class Project(Base):
 
         # Build DataFrame
         data = pd.DataFrame(docs)
+        data["id"] = [uuid() for _ in range(len(data))]
         data["text_prefix"] = data["text"].str[:50]
         data["text_hash"] = data["text"].apply(generate_hash)
         data["shuffle_key"] = [
@@ -69,7 +95,7 @@ class Project(Base):
         Document.objects.from_csv(
             f,
             static_mapping={
-                "project": self.id,
+                "project_id": str(self.id),
                 "created_at": timezone.now(),
                 "updated_at": timezone.now(),
             },
@@ -91,4 +117,25 @@ class Document(Base):
     text_hash = models.CharField(max_length=64)
 
     class Meta:
-        unique_together = [("project", "text_hash")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "text_hash"],
+                name="document_project_text_hash_uniq",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["shuffle_key", "id"],
+                name="shuffle_key_idx",
+            ),
+            models.Index(
+                fields=["text_prefix"],
+                name="text_prefix_idx",
+                opclasses=["text_pattern_ops"],
+            ),
+            GinIndex(
+                fields=["text"],
+                name="text_trgm_idx",
+                opclasses=["gin_trgm_ops"],
+            ),
+        ]
