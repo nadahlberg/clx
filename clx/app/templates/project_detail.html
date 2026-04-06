@@ -218,7 +218,7 @@
                 <template x-for="thread in threads" :key="thread.id">
                     <button @click="selectThread(thread)"
                             class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors"
-                            :class="activeThread && activeThread.id === thread.id ? 'bg-gray-50' : ''">
+                            :class="activeThread && activeThread.id === thread.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''">
                         <p class="text-sm text-gray-700 truncate" x-text="thread.preview || 'New chat'"></p>
                         <p class="text-xs text-gray-400 mt-0.5" x-text="thread.model"></p>
                     </button>
