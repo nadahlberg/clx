@@ -254,6 +254,18 @@ def thread_messages_api(request, project_id, thread_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def delete_thread_api(request, project_id, thread_id):
+    """POST: delete a thread."""
+    project = get_object_or_404(Project, id=project_id)
+    thread = get_object_or_404(
+        Thread, id=thread_id, label__project=project
+    )
+    thread.delete()
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def send_message_api(request, project_id, thread_id):
     """POST: send a user message and get an agent response."""
     project = get_object_or_404(Project, id=project_id)

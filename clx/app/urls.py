@@ -46,6 +46,10 @@ urlpatterns = [
         views.create_thread_api,
     ),
     path(
+        "api/projects/<str:project_id>/threads/<str:thread_id>/delete",
+        views.delete_thread_api,
+    ),
+    path(
         "api/projects/<str:project_id>/threads/<str:thread_id>/messages",
         views.thread_messages_api,
     ),
