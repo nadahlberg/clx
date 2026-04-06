@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50"
+     x-data="{
+         documents: [],
+         page: 1,
+         totalPages: 1,
+         totalCount: 0,
+         loading: true,
+         fetchDocs() {
+             this.loading = true;
+             fetch('/api/projects/{{ project.id }}/docs?page=' + this.page)
+                 .then(r => r.json())
+                 .then(data => {
+                     this.documents = data.documents;
+                     this.page = data.page;
+                     this.totalPages = data.total_pages;
+                     this.totalCount = data.total_count;
+                     this.loading = false;
+                 });
+         }
+     }"
+     x-init="fetchDocs()">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow px-6 py-4 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-gray-800">{{ project.name }}</h1>
+        <a href="/" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Projects
+        </a>
+    </nav>
+
+    <!-- Three-column layout -->
+    <div class="grid grid-cols-4 gap-6 p-6 max-w-7xl mx-auto">
+        <!-- Left sidebar (placeholder) -->
+        <div class="col-span-1"></div>
+
+        <!-- Center content -->
+        <div class="col-span-2">
+            <!-- Document count -->
+            <div class="mb-4 text-gray-600 text-sm">
+                <span x-text="totalCount"></span> document<span x-show="totalCount !== 1">s</span>
+            </div>
+
+            <!-- Loading state -->
+            <div x-show="loading" class="text-center py-8 text-gray-400">
+                Loading...
+            </div>
+
+            <!-- Document list -->
+            <div x-show="!loading" class="bg-white rounded-lg shadow divide-y divide-gray-200">
+                <template x-for="doc in documents" :key="doc.id">
+                    <div class="px-4 py-3 text-sm text-gray-700">
+                        <span x-text="doc.text_prefix"></span>
+                        <span class="text-gray-400" x-show="doc.text_prefix.length >= 50">...</span>
+                    </div>
+                </template>
+                <div x-show="documents.length === 0 && !loading"
+                     class="px-4 py-8 text-center text-gray-400">
+                    No documents yet.
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div x-show="totalPages > 1" class="flex items-center justify-center gap-2 mt-6">
+                <button @click="page--; fetchDocs()"
+                        :disabled="page <= 1"
+                        class="px-3 py-1 rounded border text-sm"
+                        :class="page <= 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-600 border-gray-300 hover:bg-gray-100'">
+                    Previous
+                </button>
+                <span class="text-sm text-gray-600">
+                    Page <span x-text="page"></span> of <span x-text="totalPages"></span>
+                </span>
+                <button @click="page++; fetchDocs()"
+                        :disabled="page >= totalPages"
+                        class="px-3 py-1 rounded border text-sm"
+                        :class="page >= totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-600 border-gray-300 hover:bg-gray-100'">
+                    Next
+                </button>
+            </div>
+        </div>
+
+        <!-- Right sidebar (placeholder) -->
+        <div class="col-span-1"></div>
+    </div>
+</div>
+{% endblock %}
