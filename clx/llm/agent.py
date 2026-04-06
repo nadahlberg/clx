@@ -78,21 +78,16 @@ class Agent:
         """Hook to run after initialization."""
         pass
 
+    # Fields to exclude from messages sent to the LLM.
+    _internal_fields = {"name", "args"}
+
     @property
     def sanitized_messages(self):
-        """Strip invalid fields from messages."""
-        sanitized_messages = []
-        for message in self.messages:
-            sanitized_message = {
-                "role": message["role"],
-                "content": message["content"],
-            }
-            if "tool_calls" in message:
-                sanitized_message["tool_calls"] = message["tool_calls"]
-            if message["role"] == "tool":
-                sanitized_message["tool_call_id"] = message["tool_call_id"]
-            sanitized_messages.append(sanitized_message)
-        return sanitized_messages
+        """Strip internal fields from messages, preserving provider fields."""
+        return [
+            {k: v for k, v in message.items() if k not in self._internal_fields}
+            for message in self.messages
+        ]
 
     @property
     def tool_history(self):
