@@ -4,6 +4,7 @@
 
 {% block content %}
 <div x-data="{
+         activeTab: 'agent',
          documents: [],
          page: 1,
          hasNext: false,
@@ -12,6 +13,7 @@
          loading: true,
          queryString: '',
          showQueryHelp: false,
+         projectName: '{{ project.name|escapejs }}',
          activeLabel: null,
          labels: [],
          labelDropdownOpen: false,
@@ -25,6 +27,7 @@
              return p.toString();
          },
          search() {
+             this.activeTab = 'search';
              this.page = 1;
              this.totalCount = null;
              this.fetchDocs();
@@ -96,6 +99,17 @@
                  if (idx !== -1) this.labels[idx].name = updated.name;
                  this.showEditLabelModal = false;
              });
+         },
+         renameProject() {
+             const name = this.projectName.trim();
+             if (!name) return;
+             fetch('/api/projects/{{ project.id }}/rename', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({name})
+             }).then(r => r.json()).then(updated => {
+                 this.projectName = updated.name;
+             });
          }
      }"
      x-init="fetchDocs(); fetchLabels()"
@@ -106,7 +120,7 @@
         <!-- Left sidebar -->
         <aside class="border-r border-border flex flex-col">
             <div class="h-12 shrink-0 border-b border-border flex items-center justify-between px-4">
-                <span class="text-sm font-semibold text-gray-800">{{ project.name }}</span>
+                <span class="text-sm font-semibold text-gray-800 truncate" x-text="projectName"></span>
                 <a href="/" class="text-gray-500 hover:text-gray-700 transition-colors" title="All Projects">
                     <i class="fas fa-layer-group"></i>
                 </a>
@@ -148,58 +162,108 @@
 
         <!-- Center column -->
         <div class="flex flex-col min-h-0">
-            <!-- Pinned doc count header -->
-            <div class="h-10 border-b border-border flex items-center px-4 shrink-0">
-                <span x-show="totalCount !== null" class="text-xs text-gray-600">
-                    <span x-text="totalCount.toLocaleString()"></span> document<span x-show="totalCount !== 1">s</span>
-                </span>
-                <button x-show="totalCount === null && !countLoading"
-                        @click="fetchCount()"
-                        class="text-xs text-gray-500 hover:text-gray-700 transition-colors">
-                    <i class="fas fa-calculator mr-1"></i> Get count
-                </button>
-                <span x-show="countLoading" class="text-xs text-gray-500">
-                    <i class="fas fa-spinner fa-spin mr-1"></i> Counting...
-                </span>
+            <!-- Tab navbar -->
+            <div class="h-10 shrink-0 border-b border-border flex items-center px-2 gap-1">
+                <template x-for="tab in [
+                    {id: 'agent', icon: 'fa-robot', label: 'Agent'},
+                    {id: 'search', icon: 'fa-search', label: 'Search'},
+                    {id: 'labels', icon: 'fa-tags', label: 'Labels'},
+                    {id: 'settings', icon: 'fa-gear', label: 'Settings'}
+                ]" :key="tab.id">
+                    <button @click="activeTab = tab.id"
+                            class="px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5"
+                            :class="activeTab === tab.id ? 'bg-gray-100 text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
+                        <i class="fas" :class="tab.icon"></i>
+                        <span x-text="tab.label"></span>
+                    </button>
+                </template>
             </div>
-            <!-- Scrollable document area -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <!-- Loading state -->
-                <div x-show="loading" class="flex items-center justify-center py-12">
-                    <span class="text-sm text-gray-500">Loading...</span>
+
+            <!-- Tab: Agent -->
+            <div x-show="activeTab === 'agent'" class="flex-1 overflow-y-auto flex items-center justify-center">
+                <span class="text-sm text-gray-500"><i class="fas fa-robot mr-1"></i> Agent</span>
+            </div>
+
+            <!-- Tab: Search -->
+            <div x-show="activeTab === 'search'" class="flex-1 flex flex-col min-h-0">
+                <!-- Count sub-nav -->
+                <div class="h-10 border-b border-border flex items-center px-4 shrink-0">
+                    <span x-show="totalCount !== null" class="text-xs text-gray-600">
+                        <span x-text="totalCount.toLocaleString()"></span> document<span x-show="totalCount !== 1">s</span>
+                    </span>
+                    <button x-show="totalCount === null && !countLoading"
+                            @click="fetchCount()"
+                            class="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                        <i class="fas fa-calculator mr-1"></i> Get count
+                    </button>
+                    <span x-show="countLoading" class="text-xs text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Counting...
+                    </span>
                 </div>
-
-                <!-- Document cards -->
-                <div x-show="!loading" class="space-y-3">
-                    <template x-for="doc in documents" :key="doc.id">
-                        <div class="border border-border rounded-lg px-4 py-3 bg-surface hover:border-gray-300 transition-colors cursor-default">
-                            <p class="text-sm text-gray-700" x-text="doc.text"></p>
+                <!-- Scrollable document area -->
+                <div class="flex-1 overflow-y-auto p-4">
+                    <div x-show="loading" class="flex items-center justify-center py-12">
+                        <span class="text-sm text-gray-500">Loading...</span>
+                    </div>
+                    <div x-show="!loading" class="space-y-3">
+                        <template x-for="doc in documents" :key="doc.id">
+                            <div class="border border-border rounded-lg px-4 py-3 bg-surface hover:border-gray-300 transition-colors cursor-default">
+                                <p class="text-sm text-gray-700" x-text="doc.text"></p>
+                            </div>
+                        </template>
+                        <div x-show="documents.length === 0" class="flex items-center justify-center py-12">
+                            <span class="text-sm text-gray-500">No documents yet.</span>
                         </div>
-                    </template>
-
-                    <!-- Empty state -->
-                    <div x-show="documents.length === 0" class="flex items-center justify-center py-12">
-                        <span class="text-sm text-gray-500">No documents yet.</span>
+                    </div>
+                    <div x-show="page > 1 || hasNext" class="flex items-center justify-center gap-3 pt-4 pb-2">
+                        <button @click="page--; fetchDocs()"
+                                :disabled="page <= 1"
+                                class="px-3 py-1.5 text-xs rounded-md border border-border transition-colors"
+                                :class="page <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
+                            <i class="fas fa-chevron-left mr-1"></i> Previous
+                        </button>
+                        <span class="text-xs text-gray-600">
+                            Page <span x-text="page"></span>
+                        </span>
+                        <button @click="page++; fetchDocs()"
+                                :disabled="!hasNext"
+                                class="px-3 py-1.5 text-xs rounded-md border border-border transition-colors"
+                                :class="!hasNext ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
+                            Next <i class="fas fa-chevron-right ml-1"></i>
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Pagination -->
-                <div x-show="page > 1 || hasNext" class="flex items-center justify-center gap-3 pt-4 pb-2">
-                    <button @click="page--; fetchDocs()"
-                            :disabled="page <= 1"
-                            class="px-3 py-1.5 text-xs rounded-md border border-border transition-colors"
-                            :class="page <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
-                        <i class="fas fa-chevron-left mr-1"></i> Previous
-                    </button>
-                    <span class="text-xs text-gray-600">
-                        Page <span x-text="page"></span>
-                    </span>
-                    <button @click="page++; fetchDocs()"
-                            :disabled="!hasNext"
-                            class="px-3 py-1.5 text-xs rounded-md border border-border transition-colors"
-                            :class="!hasNext ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:border-gray-300 hover:bg-gray-50'">
-                        Next <i class="fas fa-chevron-right ml-1"></i>
-                    </button>
+            <!-- Tab: Labels -->
+            <div x-show="activeTab === 'labels'" class="flex-1 overflow-y-auto p-4">
+                <div class="space-y-3">
+                    <template x-for="label in labels" :key="label.id">
+                        <div class="border border-border rounded-lg px-4 py-3 bg-surface hover:border-gray-300 transition-colors cursor-default flex items-center gap-2">
+                            <i class="fas fa-tag text-gray-400 text-xs"></i>
+                            <span class="text-sm text-gray-700" x-text="label.name"></span>
+                        </div>
+                    </template>
+                    <div x-show="labels.length === 0" class="flex items-center justify-center py-12">
+                        <span class="text-sm text-gray-500">No labels yet.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Settings -->
+            <div x-show="activeTab === 'settings'" class="flex-1 overflow-y-auto p-4">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Project Settings</h3>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                    <div class="flex gap-2">
+                        <input type="text"
+                               x-model="projectName"
+                               class="flex-1 border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                        <button @click="renameProject()"
+                                class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                            Save
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

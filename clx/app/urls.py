@@ -33,4 +33,8 @@ urlpatterns = [
         "api/projects/<str:project_id>/labels/<str:label_id>/rename",
         views.rename_label_api,
     ),
+    path(
+        "api/projects/<str:project_id>/rename",
+        views.rename_project_api,
+    ),
 ]

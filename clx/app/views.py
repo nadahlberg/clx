@@ -164,3 +164,20 @@ def rename_label_api(request, project_id, label_id):
     label.name = name
     label.save(update_fields=["name", "updated_at"])
     return JsonResponse({"id": str(label.id), "name": label.name})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def rename_project_api(request, project_id):
+    """POST: rename a project."""
+    project = get_object_or_404(Project, id=project_id)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    name = data.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+    project.name = name
+    project.save(update_fields=["name", "updated_at"])
+    return JsonResponse({"id": str(project.id), "name": project.name})
