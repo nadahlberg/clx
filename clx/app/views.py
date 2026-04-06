@@ -1,11 +1,12 @@
 import json
 
+from django.conf import settings as django_settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Label, Project, Thread
+from .models import Label, Message, Project, Thread
 
 DOCS_PER_PAGE = 100
 
@@ -29,7 +30,15 @@ def project_detail_view(request, project_id):
     elif project.active_label is None:
         project.active_label = project.labels.first()
         project.save(update_fields=["active_label", "updated_at"])
-    return render(request, "project_detail.html", {"project": project})
+    return render(
+        request,
+        "project_detail.html",
+        {
+            "project": project,
+            "model_ids": django_settings.MODEL_IDS,
+            "default_model": django_settings.DEFAULT_MODEL,
+        },
+    )
 
 
 # --- API Endpoints ---
@@ -202,3 +211,72 @@ def label_threads_api(request, project_id, label_id):
             "updated_at": t.updated_at.isoformat(),
         })
     return JsonResponse({"threads": result})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def create_thread_api(request, project_id, label_id):
+    """POST: create a new thread for a label."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = {}
+    model = data.get("model", django_settings.DEFAULT_MODEL)
+    thread = Thread.objects.create(label=label, model=model)
+    return JsonResponse(
+        {"id": str(thread.id), "model": thread.model}, status=201
+    )
+
+
+@require_GET
+def thread_messages_api(request, project_id, thread_id):
+    """GET: list messages for a thread."""
+    project = get_object_or_404(Project, id=project_id)
+    thread = get_object_or_404(
+        Thread, id=thread_id, label__project=project
+    )
+    messages = thread.messages.order_by("created_at")
+    return JsonResponse(
+        {
+            "messages": [
+                {
+                    "id": str(m.id),
+                    "data": m.data,
+                    "num_tokens": m.num_tokens,
+                }
+                for m in messages
+            ]
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def send_message_api(request, project_id, thread_id):
+    """POST: send a user message and get an agent response."""
+    project = get_object_or_404(Project, id=project_id)
+    thread = get_object_or_404(
+        Thread, id=thread_id, label__project=project
+    )
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    content = data.get("content", "").strip()
+    if not content:
+        return JsonResponse({"error": "content is required"}, status=400)
+
+    from .agent import CLXAgent
+
+    agent = CLXAgent(thread)
+    response = agent.run(content)
+    return JsonResponse(
+        {
+            "response": {
+                "role": response.get("role", "assistant"),
+                "content": response.get("content", ""),
+            }
+        }
+    )

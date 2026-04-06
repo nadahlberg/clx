@@ -41,4 +41,16 @@ urlpatterns = [
         "api/projects/<str:project_id>/labels/<str:label_id>/threads",
         views.label_threads_api,
     ),
+    path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/threads/create",
+        views.create_thread_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/threads/<str:thread_id>/messages",
+        views.thread_messages_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/threads/<str:thread_id>/send",
+        views.send_message_api,
+    ),
 ]

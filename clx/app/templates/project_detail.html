@@ -22,6 +22,77 @@
          showEditLabelModal: false,
          editLabelName: '',
          threads: [],
+         activeThread: null,
+         chatMessages: [],
+         chatInput: '',
+         chatSending: false,
+         selectedModel: '{{ default_model }}',
+         modelDropdownOpen: false,
+         modelIds: {{ model_ids|safe }},
+         newThread() {
+             if (!this.activeLabel) return;
+             fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/threads/create', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({model: this.selectedModel})
+             }).then(r => r.json()).then(thread => {
+                 this.threads.unshift({id: thread.id, model: thread.model, preview: '', updated_at: new Date().toISOString()});
+                 this.selectThread(thread);
+             });
+         },
+         selectThread(thread) {
+             this.activeThread = thread;
+             this.selectedModel = thread.model;
+             this.chatMessages = [];
+             fetch('/api/projects/{{ project.id }}/threads/' + thread.id + '/messages')
+                 .then(r => r.json())
+                 .then(data => {
+                     this.chatMessages = data.messages.map(m => m.data).filter(d => d.role !== 'system');
+                     this.$nextTick(() => { this.scrollChat(); });
+                 });
+         },
+         sendMessage() {
+             const content = this.chatInput.trim();
+             if (!content || this.chatSending) return;
+             if (!this.activeThread) {
+                 // Auto-create thread then send
+                 if (!this.activeLabel) return;
+                 this.chatSending = true;
+                 fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/threads/create', {
+                     method: 'POST',
+                     headers: {'Content-Type': 'application/json'},
+                     body: JSON.stringify({model: this.selectedModel})
+                 }).then(r => r.json()).then(thread => {
+                     this.threads.unshift({id: thread.id, model: thread.model, preview: '', updated_at: new Date().toISOString()});
+                     this.activeThread = thread;
+                     this._doSend(content);
+                 });
+                 return;
+             }
+             this.chatSending = true;
+             this._doSend(content);
+         },
+         _doSend(content) {
+             this.chatMessages.push({role: 'user', content: content});
+             this.chatInput = '';
+             this.$nextTick(() => { this.scrollChat(); });
+             fetch('/api/projects/{{ project.id }}/threads/' + this.activeThread.id + '/send', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({content})
+             }).then(r => r.json()).then(data => {
+                 this.chatMessages.push(data.response);
+                 // Update thread preview in sidebar
+                 const t = this.threads.find(t => t.id === this.activeThread.id);
+                 if (t) t.preview = data.response.content.substring(0, 100);
+                 this.chatSending = false;
+                 this.$nextTick(() => { this.scrollChat(); });
+             }).catch(() => { this.chatSending = false; });
+         },
+         scrollChat() {
+             const el = document.getElementById('chat-scroll');
+             if (el) el.scrollTop = el.scrollHeight;
+         },
          _filterParams() {
              const p = new URLSearchParams();
              if (this.queryString.trim()) p.set('q', this.queryString.trim());
@@ -138,13 +209,16 @@
             <!-- Agent tab: Thread history -->
             <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel">
                 <!-- New thread button -->
-                <button class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors flex items-center gap-2">
+                <button @click="activeThread = null; chatMessages = []"
+                        class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors flex items-center gap-2 shrink-0">
                     <i class="fas fa-plus text-gray-400 text-xs"></i>
                     <span class="text-sm text-gray-500">New thread</span>
                 </button>
                 <!-- Thread list -->
                 <template x-for="thread in threads" :key="thread.id">
-                    <button class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors">
+                    <button @click="selectThread(thread)"
+                            class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors"
+                            :class="activeThread && activeThread.id === thread.id ? 'bg-gray-50' : ''">
                         <p class="text-sm text-gray-700 truncate" x-text="thread.preview || 'Empty thread'"></p>
                         <p class="text-xs text-gray-400 mt-0.5" x-text="thread.model"></p>
                     </button>
@@ -209,9 +283,70 @@
                 </template>
             </div>
 
-            <!-- Tab: Agent -->
-            <div x-show="activeTab === 'agent'" class="flex-1 overflow-y-auto flex items-center justify-center bg-surface">
-                <span class="text-sm text-gray-500"><i class="fas fa-robot mr-1"></i> Agent</span>
+            <!-- Tab: Agent (Chat) -->
+            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-surface">
+                <!-- Chat messages -->
+                <div id="chat-scroll" class="flex-1 overflow-y-auto p-4">
+                    <div x-show="chatMessages.length === 0 && !chatSending" class="flex items-center justify-center h-full">
+                        <span class="text-sm text-gray-400">Start a conversation</span>
+                    </div>
+                    <div class="space-y-4">
+                        <template x-for="(msg, i) in chatMessages" :key="i">
+                            <div class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+                                <div class="max-w-[80%] rounded-lg px-4 py-2.5"
+                                     :class="msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'">
+                                    <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="chatSending" class="flex justify-start">
+                            <div class="bg-gray-100 rounded-lg px-4 py-2.5">
+                                <span class="text-sm text-gray-500"><i class="fas fa-spinner fa-spin mr-1"></i> Thinking...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Chat input -->
+                <div class="shrink-0 px-4 pb-4 pt-2">
+                    <div class="border border-border rounded-lg bg-surface focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
+                        <textarea x-model="chatInput"
+                                  @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
+                                  @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 160) + 'px'"
+                                  rows="1"
+                                  placeholder="Send a message..."
+                                  class="w-full px-3 pt-2.5 pb-1 text-sm resize-none overflow-hidden focus:outline-none bg-transparent"></textarea>
+                        <div class="flex items-center justify-between px-2 pb-2">
+                            <!-- Model selector -->
+                            <div class="relative">
+                                <button @click="modelDropdownOpen = !modelDropdownOpen"
+                                        class="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 rounded transition-colors">
+                                    <i class="fas fa-microchip"></i>
+                                    <span x-text="selectedModel.split('/').pop()"></span>
+                                    <i class="fas fa-chevron-down text-[10px]"></i>
+                                </button>
+                                <div x-show="modelDropdownOpen" x-cloak
+                                     @click.outside="modelDropdownOpen = false"
+                                     class="absolute bottom-full left-0 mb-1 bg-white border border-border rounded-lg shadow-lg z-20 min-w-[220px] max-h-48 overflow-y-auto">
+                                    <template x-for="mid in modelIds" :key="mid">
+                                        <button @click="selectedModel = mid; modelDropdownOpen = false"
+                                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                                :class="selectedModel === mid ? 'text-blue-600 font-medium' : 'text-gray-700'">
+                                            <i class="fas fa-check text-[10px]" :class="selectedModel === mid ? 'text-blue-600' : 'invisible'"></i>
+                                            <span x-text="mid"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Send button -->
+                            <button @click="sendMessage()"
+                                    :disabled="!chatInput.trim() || chatSending"
+                                    class="p-1.5 rounded-md transition-colors"
+                                    :class="chatInput.trim() && !chatSending ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'">
+                                <i class="fas fa-arrow-up text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tab: Search -->

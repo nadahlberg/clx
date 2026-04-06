@@ -3,6 +3,7 @@ import random
 from io import StringIO
 
 import pandas as pd
+from django.conf import settings as django_settings
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils import timezone
@@ -175,7 +176,7 @@ class Thread(Base):
     label = models.ForeignKey(
         Label, on_delete=models.CASCADE, related_name="threads"
     )
-    model = models.CharField(max_length=255)
+    model = models.CharField(max_length=255, default=django_settings.DEFAULT_MODEL)
 
 
 class Message(Base):
