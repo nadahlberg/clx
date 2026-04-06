@@ -134,7 +134,7 @@
                     <p class="mt-1.5 text-gray-500">Example: <code class="text-gray-700">foo, bar | baz</code> matches <em>foo</em> AND (<em>bar</em> OR <em>baz</em>)</p>
                 </div>
                 <textarea x-model="queryString"
-                          @keydown.enter.prevent="search()"
+                          @keydown.enter.exact.prevent="search()"
                           @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
                           rows="1"
                           placeholder="e.g. foo, bar | baz"
