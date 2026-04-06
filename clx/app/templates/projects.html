@@ -36,7 +36,10 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({name: projectName})
-                }).then(() => { window.location.reload(); })
+                }).then(r => {
+                    if (!r.ok) throw new Error('Failed to create project');
+                    window.location.reload();
+                }).catch(e => alert(e.message))
             ">
                 <label for="project-name" class="block text-sm font-medium text-gray-700 mb-1">
                     Project Name

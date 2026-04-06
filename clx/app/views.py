@@ -8,6 +8,8 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from .models import Project
 
+DOCS_PER_PAGE = 25
+
 # --- Page Views ---
 
 
@@ -26,8 +28,8 @@ def project_detail_view(request, project_id):
 # --- API Endpoints ---
 
 
-@require_http_methods(["GET", "POST"])
 @csrf_exempt
+@require_http_methods(["GET", "POST"])
 def projects_api(request):
     """GET: list projects. POST: create a project."""
     if request.method == "GET":
@@ -36,8 +38,14 @@ def projects_api(request):
             {"projects": [{"id": str(p.id), "name": p.name} for p in projects]}
         )
     else:
-        data = json.loads(request.body)
-        project = Project.objects.create(name=data["name"])
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+        name = data.get("name", "").strip()
+        if not name:
+            return JsonResponse({"error": "name is required"}, status=400)
+        project = Project.objects.create(name=name)
         return JsonResponse(
             {"id": str(project.id), "name": project.name},
             status=201,
@@ -50,7 +58,7 @@ def project_docs_api(request, project_id):
     project = get_object_or_404(Project, id=project_id)
     page_number = request.GET.get("page", 1)
     documents = project.documents.order_by("shuffle_key")
-    paginator = Paginator(documents, 25)
+    paginator = Paginator(documents, DOCS_PER_PAGE)
     page = paginator.get_page(page_number)
     return JsonResponse(
         {

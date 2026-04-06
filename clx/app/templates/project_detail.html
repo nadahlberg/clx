@@ -18,7 +18,8 @@
                      this.totalPages = data.total_pages;
                      this.totalCount = data.total_count;
                      this.loading = false;
-                 });
+                 })
+                 .catch(() => { this.loading = false; });
          }
      }"
      x-init="fetchDocs()">

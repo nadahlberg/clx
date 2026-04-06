@@ -1,3 +1,4 @@
+import json
 import random
 from io import StringIO
 
@@ -51,15 +52,13 @@ class Project(Base):
             ]
 
         # Build DataFrame
-        import json as _json
-
         data = pd.DataFrame(docs)
         data["text_prefix"] = data["text"].str[:50]
         data["text_hash"] = data["text"].apply(generate_hash)
         data["shuffle_key"] = [
             random.randint(0, 1_000_000) for _ in range(len(data))
         ]
-        data["meta"] = data["meta"].apply(_json.dumps)
+        data["meta"] = data["meta"].apply(json.dumps)
 
         # Write to CSV buffer
         f = StringIO()
