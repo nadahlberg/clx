@@ -8,7 +8,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from .models import Project
 
-DOCS_PER_PAGE = 25
+DOCS_PER_PAGE = 100
 
 # --- Page Views ---
 
