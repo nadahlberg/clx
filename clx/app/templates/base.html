@@ -4,15 +4,42 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Classifier Experiments</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: '#e5e7eb',
+                        surface: '#ffffff',
+                        muted: '#f9fafb',
+                        'muted-foreground': '#6b7280',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
         [x-cloak]{ display: none !important }
+        /* Height constrained by parent grid; only overflow-y needed */
+        .scrollable-panel {
+            overflow-y: auto;
+        }
     </style>
 </head>
-<body>
+<body class="font-sans bg-muted text-gray-800 antialiased">
+    <nav class="h-12 border-b border-border flex items-center px-6 bg-surface sticky top-0 z-40">
+        <a href="/" class="text-sm font-semibold text-gray-800 tracking-tight">Classifier Experiments</a>
+    </nav>
     {% block content %}{% endblock %}
 </body>
 </html>

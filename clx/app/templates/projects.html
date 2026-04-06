@@ -1,24 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 p-8" x-data="{ showModal: false, projectName: '' }">
+<div class="min-h-screen p-8" x-data="{ showModal: false, projectName: '' }">
     <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Projects</h1>
+        <div class="border-b border-border pb-6 mb-8">
+            <h1 class="text-2xl font-semibold text-gray-900">Projects</h1>
+        </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for project in projects %}
             <a href="/projects/{{ project.id }}/"
-               class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6">
-                <h2 class="text-xl font-semibold text-gray-700">{{ project.name }}</h2>
+               class="block bg-white rounded-lg border border-border hover:border-gray-300 transition-colors p-6">
+                <h2 class="text-lg font-medium text-gray-800">{{ project.name }}</h2>
             </a>
             {% endfor %}
 
             <!-- New Project Card -->
             <button @click="showModal = true"
-                    class="flex items-center justify-center bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 border-2 border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 cursor-pointer">
+                    class="flex items-center justify-center bg-white rounded-lg border border-dashed border-gray-200 p-6 text-gray-400 hover:text-gray-500 hover:border-gray-300 transition-colors cursor-pointer">
                 <div class="text-center">
-                    <i class="fas fa-plus text-3xl mb-2"></i>
-                    <p class="text-lg font-medium">New Project</p>
+                    <i class="fas fa-plus text-2xl mb-2"></i>
+                    <p class="text-base font-medium">New Project</p>
                 </div>
             </button>
         </div>
@@ -26,11 +28,11 @@
 
     <!-- New Project Modal -->
     <div x-show="showModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
          @keydown.escape.window="showModal = false">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"
+        <div class="bg-white rounded-xl border border-border p-6 w-full max-w-md"
              @click.outside="showModal = false">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Create New Project</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Create New Project</h2>
             <form @submit.prevent="
                 fetch('/api/projects/', {
                     method: 'POST',
@@ -48,16 +50,16 @@
                        type="text"
                        x-model="projectName"
                        required
-                       class="w-full border border-gray-300 rounded-md px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
                        placeholder="Enter project name">
                 <div class="flex justify-end gap-3">
                     <button type="button"
                             @click="showModal = false"
-                            class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                            class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
                         Cancel
                     </button>
                     <button type="submit"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            class="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800">
                         Create
                     </button>
                 </div>
