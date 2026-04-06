@@ -13,4 +13,8 @@ urlpatterns = [
         "api/projects/<str:project_id>/docs",
         views.project_docs_api,
     ),
+    path(
+        "api/projects/<str:project_id>/docs/count",
+        views.project_docs_count_api,
+    ),
 ]

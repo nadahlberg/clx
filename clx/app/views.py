@@ -52,12 +52,21 @@ def projects_api(request):
         )
 
 
+def _filtered_documents(project, request):
+    """Return a queryset of documents filtered by request params."""
+    documents = project.documents.order_by("shuffle_key")
+    text_filter = request.GET.get("text", "").strip()
+    if text_filter:
+        documents = documents.filter(text__icontains=text_filter)
+    return documents
+
+
 @require_GET
 def project_docs_api(request, project_id):
     """GET: paginated documents for a project."""
     project = get_object_or_404(Project, id=project_id)
     page_number = request.GET.get("page", 1)
-    documents = project.documents.order_by("shuffle_key")
+    documents = _filtered_documents(project, request)
     paginator = Paginator(documents, DOCS_PER_PAGE)
     page = paginator.get_page(page_number)
     return JsonResponse(
@@ -73,6 +82,13 @@ def project_docs_api(request, project_id):
             ],
             "page": page.number,
             "total_pages": paginator.num_pages,
-            "total_count": paginator.count,
         }
     )
+
+
+@require_GET
+def project_docs_count_api(request, project_id):
+    """GET: count of documents for a project (with filters)."""
+    project = get_object_or_404(Project, id=project_id)
+    documents = _filtered_documents(project, request)
+    return JsonResponse({"total_count": documents.count()})
