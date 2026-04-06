@@ -158,6 +158,7 @@ class Label(Base):
         Project, on_delete=models.CASCADE, related_name="labels"
     )
     name = models.CharField(max_length=255)
+    instructions = models.TextField(blank=True, default="")
 
     class Meta:
         constraints = [
@@ -166,3 +167,22 @@ class Label(Base):
                 name="label_project_name_uniq",
             )
         ]
+
+
+class Thread(Base):
+    """Model for LLM threads tied to a label."""
+
+    label = models.ForeignKey(
+        Label, on_delete=models.CASCADE, related_name="threads"
+    )
+    model = models.CharField(max_length=255)
+
+
+class Message(Base):
+    """Model for messages within a thread."""
+
+    thread = models.ForeignKey(
+        Thread, on_delete=models.CASCADE, related_name="messages"
+    )
+    data = models.JSONField(default=dict)
+    num_tokens = models.IntegerField(default=0)
