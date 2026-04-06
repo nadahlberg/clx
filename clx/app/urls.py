@@ -17,4 +17,12 @@ urlpatterns = [
         "api/projects/<str:project_id>/docs/count",
         views.project_docs_count_api,
     ),
+    path(
+        "api/projects/<str:project_id>/labels",
+        views.project_labels_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/activate",
+        views.set_active_label_api,
+    ),
 ]

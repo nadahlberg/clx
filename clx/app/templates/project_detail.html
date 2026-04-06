@@ -11,6 +11,9 @@
          countLoading: false,
          loading: true,
          textFilter: '',
+         activeLabel: null,
+         labels: [],
+         labelDropdownOpen: false,
          _filterParams() {
              const p = new URLSearchParams();
              if (this.textFilter.trim()) p.set('text', this.textFilter.trim());
@@ -45,9 +48,24 @@
                      this.countLoading = false;
                  })
                  .catch(() => { this.countLoading = false; });
+         },
+         fetchLabels() {
+             fetch('/api/projects/{{ project.id }}/labels')
+                 .then(r => r.json())
+                 .then(data => {
+                     this.labels = data.labels;
+                     const active = data.active_label_id;
+                     this.activeLabel = this.labels.find(l => l.id === active) || this.labels[0] || null;
+                 });
+         },
+         switchLabel(label) {
+             this.labelDropdownOpen = false;
+             if (this.activeLabel && this.activeLabel.id === label.id) return;
+             this.activeLabel = label;
+             fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
          }
      }"
-     x-init="fetchDocs()"
+     x-init="fetchDocs(); fetchLabels()"
      class="flex-1 min-h-0">
 
     <!-- Three-column layout -->
@@ -133,10 +151,33 @@
             </div>
         </div>
 
-        <!-- Right sidebar -->
-        <aside class="border-l border-border p-4 scrollable-panel">
-            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Details</h3>
-            <p class="text-sm text-gray-500">Select a document to view details.</p>
+        <!-- Right sidebar: Label panel -->
+        <aside class="border-l border-border flex flex-col">
+            <div class="h-12 shrink-0 border-b border-border flex items-center px-4 relative">
+                <button @click="labelDropdownOpen = !labelDropdownOpen"
+                        class="flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-gray-900 transition-colors w-full">
+                    <i class="fas fa-tag text-gray-500 text-xs"></i>
+                    <span x-text="activeLabel ? activeLabel.name : 'No label'" class="truncate"></span>
+                    <i class="fas fa-chevron-down text-gray-400 text-xs ml-auto"></i>
+                </button>
+                <!-- Label dropdown -->
+                <div x-show="labelDropdownOpen"
+                     x-cloak
+                     @click.outside="labelDropdownOpen = false"
+                     class="absolute top-full left-0 right-0 bg-white border border-border rounded-b-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                    <template x-for="label in labels" :key="label.id">
+                        <button @click="switchLabel(label)"
+                                class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                :class="activeLabel && activeLabel.id === label.id ? 'text-blue-600 font-medium' : 'text-gray-700'">
+                            <i class="fas fa-check text-xs" :class="activeLabel && activeLabel.id === label.id ? 'text-blue-600' : 'invisible'"></i>
+                            <span x-text="label.name"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+            <div class="p-4 scrollable-panel">
+                <p class="text-sm text-gray-500">Select a document to view details.</p>
+            </div>
         </aside>
     </div>
 </div>

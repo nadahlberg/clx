@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Project
+from .models import Label, Project
 
 DOCS_PER_PAGE = 100
 
@@ -21,6 +21,14 @@ def projects_view(request):
 def project_detail_view(request, project_id):
     """Project detail page with paginated documents."""
     project = get_object_or_404(Project, id=project_id)
+    # Lazily create an initial label if none exist.
+    if not project.labels.exists():
+        label = Label.objects.create(project=project, name="Initial Label")
+        project.active_label = label
+        project.save(update_fields=["active_label", "updated_at"])
+    elif project.active_label is None:
+        project.active_label = project.labels.first()
+        project.save(update_fields=["active_label", "updated_at"])
     return render(request, "project_detail.html", {"project": project})
 
 
@@ -94,3 +102,31 @@ def project_docs_count_api(request, project_id):
     project = get_object_or_404(Project, id=project_id)
     documents = _filtered_documents(project, request)
     return JsonResponse({"total_count": documents.count()})
+
+
+@require_GET
+def project_labels_api(request, project_id):
+    """GET: list labels for a project."""
+    project = get_object_or_404(Project, id=project_id)
+    labels = project.labels.order_by("name")
+    return JsonResponse(
+        {
+            "labels": [
+                {"id": str(l.id), "name": l.name} for l in labels
+            ],
+            "active_label_id": str(project.active_label_id)
+            if project.active_label_id
+            else None,
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def set_active_label_api(request, project_id, label_id):
+    """POST: set the active label for a project."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    project.active_label = label
+    project.save(update_fields=["active_label", "updated_at"])
+    return JsonResponse({"id": str(label.id), "name": label.name})

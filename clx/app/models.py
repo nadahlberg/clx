@@ -34,6 +34,13 @@ class Project(Base):
     """Model for projects."""
 
     name = models.CharField(max_length=255)
+    active_label = models.ForeignKey(
+        "Label",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
 
     def add_docs(self, docs, **kwargs):
         """Bulk-insert documents using django-postgres-copy.
@@ -138,4 +145,21 @@ class Document(Base):
                 name="text_trgm_idx",
                 opclasses=["gin_trgm_ops"],
             ),
+        ]
+
+
+class Label(Base):
+    """Model for labels within a project."""
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="labels"
+    )
+    name = models.CharField(max_length=255)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "name"],
+                name="label_project_name_uniq",
+            )
         ]
