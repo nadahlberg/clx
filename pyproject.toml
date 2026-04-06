@@ -9,7 +9,7 @@ name = "clx"
 version = "0.0.1"
 description = "Toolkit for running experiments and developing classifiers."
 authors = [{ name = "Free Law Project", email = "info@free.law" }]
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 readme = "README.md"
 license = "BSD-2-Clause"
 keywords = [
