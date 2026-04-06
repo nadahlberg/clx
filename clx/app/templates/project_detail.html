@@ -163,7 +163,7 @@
         <!-- Center column -->
         <div class="flex flex-col min-h-0">
             <!-- Tab navbar -->
-            <div class="h-12 shrink-0 border-b border-border flex items-center px-3 gap-1 bg-surface">
+            <div class="h-10 shrink-0 border-b border-border flex items-stretch">
                 <template x-for="tab in [
                     {id: 'agent', icon: 'fa-robot', label: 'Agent'},
                     {id: 'search', icon: 'fa-search', label: 'Search'},
@@ -171,8 +171,8 @@
                     {id: 'settings', icon: 'fa-gear', label: 'Settings'}
                 ]" :key="tab.id">
                     <button @click="activeTab = tab.id"
-                            class="px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5"
-                            :class="activeTab === tab.id ? 'bg-gray-100 text-gray-800 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'">
+                            class="flex-1 text-xs transition-colors flex items-center justify-center gap-1.5 border-r border-border last:border-r-0"
+                            :class="activeTab === tab.id ? 'bg-gray-100 text-gray-800 font-medium' : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'">
                         <i class="fas" :class="tab.icon"></i>
                         <span x-text="tab.label"></span>
                     </button>
