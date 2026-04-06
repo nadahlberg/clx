@@ -68,13 +68,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # -- LLM Model Configuration --
 
-DEFAULT_MODEL = "gemini/gemini-2.5-pro"
+DEFAULT_MODEL = "gemini/gemini-3.1-pro-preview"
 
 MODEL_IDS = [
-    "gemini/gemini-2.5-pro",
-    "gemini/gemini-2.5-flash",
-    "anthropic/claude-sonnet-4-20250514",
-    "anthropic/claude-haiku-4-20250414",
-    "openai/gpt-4.1",
-    "openai/gpt-4.1-mini",
+    "gemini/gemini-3.1-pro-preview",
+    "gemini/gemini-3-flash-preview",
+    "anthropic/claude-opus-4-6",
+    "anthropic/claude-sonnet-4-6",
+    "openai/gpt-5.4",
+    "openai/gpt-5.4-mini",
 ]
