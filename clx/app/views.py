@@ -123,10 +123,44 @@ def project_labels_api(request, project_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def create_label_api(request, project_id):
+    """POST: create a new label for a project."""
+    project = get_object_or_404(Project, id=project_id)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    name = data.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+    label = Label.objects.create(project=project, name=name)
+    return JsonResponse({"id": str(label.id), "name": label.name}, status=201)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def set_active_label_api(request, project_id, label_id):
     """POST: set the active label for a project."""
     project = get_object_or_404(Project, id=project_id)
     label = get_object_or_404(Label, id=label_id, project=project)
     project.active_label = label
     project.save(update_fields=["active_label", "updated_at"])
+    return JsonResponse({"id": str(label.id), "name": label.name})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def rename_label_api(request, project_id, label_id):
+    """POST: rename a label."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    name = data.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+    label.name = name
+    label.save(update_fields=["name", "updated_at"])
     return JsonResponse({"id": str(label.id), "name": label.name})

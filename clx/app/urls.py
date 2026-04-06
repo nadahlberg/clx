@@ -22,7 +22,15 @@ urlpatterns = [
         views.project_labels_api,
     ),
     path(
+        "api/projects/<str:project_id>/labels/create",
+        views.create_label_api,
+    ),
+    path(
         "api/projects/<str:project_id>/labels/<str:label_id>/activate",
         views.set_active_label_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/rename",
+        views.rename_label_api,
     ),
 ]
