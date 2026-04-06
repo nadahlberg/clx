@@ -87,12 +87,13 @@
                  headers: {'Content-Type': 'application/json'},
                  body: JSON.stringify({content})
              }).then(r => r.json()).then(data => {
-                 // Update thread preview in sidebar
+                 // Update thread preview in sidebar with last assistant content
                  const t = this.threads.find(t => t.id === threadId);
-                 if (t) t.preview = data.response.content.substring(0, 100);
+                 const lastAssistant = [...data.messages].reverse().find(m => m.role === 'assistant' && m.content);
+                 if (t && lastAssistant) t.preview = lastAssistant.content.substring(0, 100);
                  // Only update chat UI if still viewing the same thread
                  if (this.activeThread && this.activeThread.id === threadId) {
-                     this.chatMessages.push(data.response);
+                     this.chatMessages.push(...data.messages);
                      this.chatSending = false;
                      this.$nextTick(() => { this.scrollChat(); });
                  }
@@ -331,11 +332,52 @@
                     </div>
                     <div class="space-y-4">
                         <template x-for="(msg, i) in chatMessages" :key="i">
-                            <div class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
-                                <div class="max-w-[80%] rounded-lg px-4 py-2.5"
-                                     :class="msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'">
-                                    <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
-                                </div>
+                            <div>
+                                <!-- User message -->
+                                <template x-if="msg.role === 'user'">
+                                    <div class="flex justify-end">
+                                        <div class="max-w-[80%] rounded-lg px-4 py-2.5 bg-blue-600 text-white">
+                                            <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Assistant message with content -->
+                                <template x-if="msg.role === 'assistant' && msg.content">
+                                    <div class="flex justify-start">
+                                        <div class="max-w-[80%] rounded-lg px-4 py-2.5 bg-gray-100 text-gray-800">
+                                            <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Assistant tool calls -->
+                                <template x-if="msg.role === 'assistant' && msg.tool_calls">
+                                    <div class="flex justify-start">
+                                        <div class="max-w-[80%] space-y-1.5">
+                                            <template x-for="tc in msg.tool_calls" :key="tc.id">
+                                                <div class="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-border rounded-md px-3 py-2">
+                                                    <i class="fas fa-wrench text-gray-400"></i>
+                                                    <span class="font-medium text-gray-600" x-text="tc.function.name"></span>
+                                                    <span class="text-gray-400 truncate max-w-[200px]" x-text="tc.function.arguments"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Tool response -->
+                                <template x-if="msg.role === 'tool'">
+                                    <div class="flex justify-start">
+                                        <div class="max-w-[80%] bg-gray-50 border border-border rounded-md px-3 py-2">
+                                            <div class="flex items-center gap-1.5 mb-1">
+                                                <i class="fas fa-reply text-gray-400 text-[10px]"></i>
+                                                <span class="text-xs font-medium text-gray-500" x-text="msg.name"></span>
+                                            </div>
+                                            <p class="text-xs text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto" x-text="msg.content"></p>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                         <div x-show="chatSending" class="flex justify-start">

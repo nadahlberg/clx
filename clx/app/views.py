@@ -297,12 +297,11 @@ def send_message_api(request, project_id, thread_id):
     from .agent import CLXAgent
 
     agent = CLXAgent(thread)
-    response = agent.run(content)
-    return JsonResponse(
-        {
-            "response": {
-                "role": response.get("role", "assistant"),
-                "content": response.get("content", ""),
-            }
-        }
-    )
+    msg_count_before = len(agent.messages)
+    agent.run(content)
+    # Return all new messages (skipping the user message already shown)
+    new_messages = [
+        m for m in agent.messages[msg_count_before + 1:]
+        if m.get("role") != "system"
+    ]
+    return JsonResponse({"messages": new_messages})
