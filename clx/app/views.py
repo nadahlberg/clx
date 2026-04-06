@@ -65,6 +65,7 @@ def project_docs_api(request, project_id):
             "documents": [
                 {
                     "id": str(d.id),
+                    "text": d.text,
                     "text_prefix": d.text_prefix,
                     "meta": d.meta,
                 }

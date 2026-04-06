@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block navbar %}{% endblock %}
+
 {% block content %}
 <div x-data="{
          documents: [],
@@ -21,10 +23,11 @@
                  .catch(() => { this.loading = false; });
          }
      }"
-     x-init="fetchDocs()">
+     x-init="fetchDocs()"
+     class="h-screen flex flex-col overflow-hidden">
 
-    <!-- Page navbar (below global nav) -->
-    <nav class="h-14 border-b border-border flex items-center justify-between px-6 bg-surface sticky top-12 z-30">
+    <!-- Page navbar -->
+    <nav class="h-12 shrink-0 border-b border-border flex items-center justify-between px-6 bg-surface">
         <h1 class="text-sm font-semibold text-gray-800">{{ project.name }}</h1>
         <a href="/" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">
             <i class="fas fa-arrow-left mr-1"></i> Back to Projects
@@ -32,7 +35,7 @@
     </nav>
 
     <!-- Three-column layout -->
-    <div class="grid grid-cols-[280px_1fr_280px] h-[calc(100vh-6.5rem)]">
+    <div class="grid grid-cols-[280px_1fr_280px] flex-1 min-h-0">
         <!-- Left sidebar -->
         <aside class="border-r border-border p-4 scrollable-panel">
             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Filters</h3>
@@ -58,7 +61,7 @@
                 <div x-show="!loading" class="space-y-3">
                     <template x-for="doc in documents" :key="doc.id">
                         <div class="border border-border rounded-lg px-4 py-3 bg-surface hover:border-gray-300 transition-colors cursor-default">
-                            <p class="text-sm text-gray-700 truncate" x-text="doc.text_prefix"></p>
+                            <p class="text-sm text-gray-700" x-text="doc.text"></p>
                         </div>
                     </template>
 

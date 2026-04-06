@@ -37,9 +37,11 @@
     </style>
 </head>
 <body class="font-sans bg-muted text-gray-800 antialiased">
+    {% block navbar %}
     <nav class="h-12 border-b border-border flex items-center px-6 bg-surface sticky top-0 z-40">
         <a href="/" class="text-sm font-semibold text-gray-800 tracking-tight">Classifier Experiments</a>
     </nav>
+    {% endblock %}
     {% block content %}{% endblock %}
 </body>
 </html>
