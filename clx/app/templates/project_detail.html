@@ -24,22 +24,22 @@
          }
      }"
      x-init="fetchDocs()"
-     class="flex flex-col flex-1 min-h-0">
-
-    <!-- Page navbar -->
-    <nav class="h-12 shrink-0 border-b border-border flex items-center justify-between px-6 bg-surface">
-        <h1 class="text-sm font-semibold text-gray-800">{{ project.name }}</h1>
-        <a href="/" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-            <i class="fas fa-arrow-left mr-1"></i> Back to Projects
-        </a>
-    </nav>
+     class="flex-1 min-h-0">
 
     <!-- Three-column layout -->
-    <div class="grid grid-cols-[280px_1fr_280px] flex-1 min-h-0">
+    <div class="grid grid-cols-[280px_1fr_280px] h-full">
         <!-- Left sidebar -->
-        <aside class="border-r border-border p-4 scrollable-panel">
-            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Filters</h3>
-            <p class="text-sm text-gray-400">No filters configured.</p>
+        <aside class="border-r border-border flex flex-col">
+            <div class="h-12 shrink-0 border-b border-border flex items-center justify-between px-4">
+                <span class="text-sm font-semibold text-gray-800">{{ project.name }}</span>
+                <a href="/" class="text-gray-400 hover:text-gray-600 transition-colors" title="All Projects">
+                    <i class="fas fa-layer-group"></i>
+                </a>
+            </div>
+            <div class="p-4 scrollable-panel">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Filters</h3>
+                <p class="text-sm text-gray-400">No filters configured.</p>
+            </div>
         </aside>
 
         <!-- Center column -->
