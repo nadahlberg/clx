@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Label, Project
+from .models import Label, Project, Thread
 
 DOCS_PER_PAGE = 100
 
@@ -181,3 +181,24 @@ def rename_project_api(request, project_id):
     project.name = name
     project.save(update_fields=["name", "updated_at"])
     return JsonResponse({"id": str(project.id), "name": project.name})
+
+
+@require_GET
+def label_threads_api(request, project_id, label_id):
+    """GET: list threads for a label with latest message preview."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    threads = label.threads.order_by("-updated_at")
+    result = []
+    for t in threads:
+        latest = t.messages.order_by("-created_at").first()
+        preview = ""
+        if latest and latest.data.get("content"):
+            preview = latest.data["content"][:100]
+        result.append({
+            "id": str(t.id),
+            "model": t.model,
+            "preview": preview,
+            "updated_at": t.updated_at.isoformat(),
+        })
+    return JsonResponse({"threads": result})

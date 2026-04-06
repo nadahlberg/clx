@@ -21,6 +21,7 @@
          newLabelName: '',
          showEditLabelModal: false,
          editLabelName: '',
+         threads: [],
          _filterParams() {
              const p = new URLSearchParams();
              if (this.queryString.trim()) p.set('q', this.queryString.trim());
@@ -64,13 +65,21 @@
                      this.labels = data.labels;
                      const active = data.active_label_id;
                      this.activeLabel = this.labels.find(l => l.id === active) || this.labels[0] || null;
+                     if (this.activeLabel) this.fetchThreads();
                  });
+         },
+         fetchThreads() {
+             if (!this.activeLabel) { this.threads = []; return; }
+             fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/threads')
+                 .then(r => r.json())
+                 .then(data => { this.threads = data.threads; });
          },
          switchLabel(label) {
              this.labelDropdownOpen = false;
              if (this.activeLabel && this.activeLabel.id === label.id) return;
              this.activeLabel = label;
              fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
+             this.fetchThreads();
          },
          createLabel() {
              const name = this.newLabelName.trim();
@@ -125,7 +134,28 @@
                     <i class="fas fa-layer-group"></i>
                 </a>
             </div>
-            <div class="p-4 scrollable-panel">
+
+            <!-- Agent tab: Thread history -->
+            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel">
+                <!-- New thread button -->
+                <button class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors flex items-center gap-2">
+                    <i class="fas fa-plus text-gray-400 text-xs"></i>
+                    <span class="text-sm text-gray-500">New thread</span>
+                </button>
+                <!-- Thread list -->
+                <template x-for="thread in threads" :key="thread.id">
+                    <button class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors">
+                        <p class="text-sm text-gray-700 truncate" x-text="thread.preview || 'Empty thread'"></p>
+                        <p class="text-xs text-gray-400 mt-0.5" x-text="thread.model"></p>
+                    </button>
+                </template>
+                <div x-show="threads.length === 0" class="px-4 py-6 text-center">
+                    <span class="text-xs text-gray-400">No threads yet</span>
+                </div>
+            </div>
+
+            <!-- Other tabs: Filters panel -->
+            <div x-show="activeTab !== 'agent'" x-cloak class="p-4 scrollable-panel">
                 <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Filters</h3>
                 <div class="flex items-center justify-between mb-1">
                     <label class="text-xs font-medium text-gray-500">Query</label>
