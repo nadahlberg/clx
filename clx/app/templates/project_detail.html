@@ -133,11 +133,12 @@
                     </div>
                     <p class="mt-1.5 text-gray-500">Example: <code class="text-gray-700">foo, bar | baz</code> matches <em>foo</em> AND (<em>bar</em> OR <em>baz</em>)</p>
                 </div>
-                <input type="text"
-                       x-model="queryString"
-                       @keydown.enter="search()"
-                       placeholder="e.g. foo, bar | baz"
-                       class="w-full border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-3">
+                <textarea x-model="queryString"
+                          @keydown.enter.prevent="search()"
+                          @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                          rows="1"
+                          placeholder="e.g. foo, bar | baz"
+                          class="w-full border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-3 resize-none overflow-hidden"></textarea>
                 <button @click="search()"
                         class="w-full px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">
                     <i class="fas fa-search mr-1"></i> Search
