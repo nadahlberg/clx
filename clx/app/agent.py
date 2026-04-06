@@ -1,16 +1,36 @@
 from clx.app.models import Message
+from clx.app.tools import Search, UpdateLabelInstructions, UpdateProjectInstructions
 from clx.llm.agent import Agent
 
 SYSTEM_PROMPT_TEMPLATE = """\
 You are an assistant for the project "{project_name}".
 You are working on the label "{label_name}".
 
-{instructions}\
+You have access to tools for searching project documents and updating
+instructions. Use them when the user asks you to find data, refine
+instructions, or configure the project.
+
+{project_instructions_block}\
+{label_instructions_block}\
+"""
+
+PROJECT_INSTRUCTIONS_BLOCK = """\
+## Project Instructions
+{project_instructions}
+
+"""
+
+LABEL_INSTRUCTIONS_BLOCK = """\
+## Label Instructions
+{label_instructions}
+
 """
 
 
 class CLXAgent(Agent):
     """A thread-backed agent that persists messages to the DB."""
+
+    default_tools = [Search, UpdateLabelInstructions, UpdateProjectInstructions]
 
     def __init__(self, thread, **kwargs):
         self.thread = thread
@@ -18,11 +38,25 @@ class CLXAgent(Agent):
         project = label.project
 
         # Build system prompt dynamically (never saved to DB).
-        instructions = label.instructions.strip()
+        project_instructions = project.instructions.strip()
+        label_instructions = label.instructions.strip()
+
+        project_block = (
+            PROJECT_INSTRUCTIONS_BLOCK.format(project_instructions=project_instructions)
+            if project_instructions
+            else ""
+        )
+        label_block = (
+            LABEL_INSTRUCTIONS_BLOCK.format(label_instructions=label_instructions)
+            if label_instructions
+            else ""
+        )
+
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
             project_name=project.name,
             label_name=label.name,
-            instructions=instructions,
+            project_instructions_block=project_block,
+            label_instructions_block=label_block,
         )
 
         # Load persisted messages and prepend system prompt.
