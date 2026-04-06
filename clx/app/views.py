@@ -62,9 +62,9 @@ def projects_api(request):
 def _filtered_documents(project, request):
     """Return a queryset of documents filtered by request params."""
     documents = project.documents.order_by("shuffle_key")
-    text_filter = request.GET.get("text", "").strip()
-    if text_filter:
-        documents = documents.filter(text__icontains=text_filter)
+    qs = request.GET.get("q", "").strip()
+    if qs:
+        documents = documents.query_string(qs)
     return documents
 
 

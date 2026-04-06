@@ -10,6 +10,7 @@ from django_shortuuid.fields import ShortUUIDField
 from postgres_copy import CopyManager
 from shortuuid import uuid
 
+from clx.query import TextManager
 from clx.utils import generate_hash
 
 
@@ -122,6 +123,8 @@ class Document(Base):
     meta = models.JSONField(default=dict, null=True, blank=True)
     shuffle_key = models.IntegerField()
     text_hash = models.CharField(max_length=64)
+
+    objects = TextManager()
 
     class Meta:
         constraints = [

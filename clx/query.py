@@ -1,0 +1,188 @@
+from __future__ import annotations
+
+from typing import Literal
+
+from django.db.models import Q, QuerySet
+from postgres_copy import CopyManager
+from pydantic import BaseModel
+
+
+# ── Query Schema ─────────────────────────────────────────────
+
+
+class Contains(BaseModel):
+    type: Literal["contains"] = "contains"
+    value: str
+
+
+class StartsWith(BaseModel):
+    type: Literal["startsWith"] = "startsWith"
+    value: str
+
+
+class Not(BaseModel):
+    type: Literal["not"] = "not"
+    query: Query
+
+
+class Or(BaseModel):
+    type: Literal["or"] = "or"
+    queries: list[Query]
+
+
+class And(BaseModel):
+    type: Literal["and"] = "and"
+    queries: list[Query]
+
+
+Query = Contains | StartsWith | Not | Or | And
+
+Not.model_rebuild()
+Or.model_rebuild()
+And.model_rebuild()
+
+
+# ── Query String Parser ──────────────────────────────────────
+
+
+def parse_query(text: str) -> dict:
+    """Parse a shorthand query string into a query dict.
+
+    Syntax:
+        ,  = AND
+        |  = OR
+        ~  = NOT
+        ^  = STARTSWITH
+        () = grouping
+        AND binds tighter than OR, so `A, B | C` = `A AND (B OR C)`
+        ...wait, the user said the opposite: "ands scoped outside ors"
+        meaning `A, B | C` = `A AND (B OR C)`.
+        Actually re-reading: "commas=AND ... ands as scoped outside of ors,
+        so A, B | C means A and (B or C)".
+        This means AND has *lower* precedence than OR.
+    """
+    tokens = _tokenize(text)
+    if not tokens:
+        return {"type": "contains", "value": ""}
+    parser = _Parser(tokens)
+    result = parser.parse_expr()
+    if parser.peek() is not None:
+        raise ValueError(f"Unexpected token: {parser.peek()}")
+    return result
+
+
+def _tokenize(text: str) -> list[str]:
+    tokens = []
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c in ",|~^()":
+            tokens.append(c)
+            i += 1
+        elif c.isspace():
+            i += 1
+        else:
+            j = i
+            while j < len(text) and text[j] not in ",|~^()":
+                j += 1
+            tokens.append(text[i:j].strip())
+            i = j
+    return tokens
+
+
+class _Parser:
+    def __init__(self, tokens: list[str]):
+        self.tokens = tokens
+        self.pos = 0
+
+    def peek(self) -> str | None:
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def consume(self, expected: str | None = None) -> str:
+        tok = self.peek()
+        if tok is None:
+            raise ValueError(f"Unexpected end of input (expected {expected})")
+        if expected and tok != expected:
+            raise ValueError(f"Expected '{expected}', got '{tok}'")
+        self.pos += 1
+        return tok
+
+    def parse_expr(self) -> dict:
+        return self.parse_and()
+
+    def parse_and(self) -> dict:
+        parts = [self.parse_or()]
+        while self.peek() == ",":
+            self.consume(",")
+            parts.append(self.parse_or())
+        return parts[0] if len(parts) == 1 else {"type": "and", "queries": parts}
+
+    def parse_or(self) -> dict:
+        parts = [self.parse_unary()]
+        while self.peek() == "|":
+            self.consume("|")
+            parts.append(self.parse_unary())
+        return parts[0] if len(parts) == 1 else {"type": "or", "queries": parts}
+
+    def parse_unary(self) -> dict:
+        if self.peek() == "~":
+            self.consume("~")
+            return {"type": "not", "query": self.parse_unary()}
+        return self.parse_primary()
+
+    def parse_primary(self) -> dict:
+        if self.peek() == "(":
+            self.consume("(")
+            expr = self.parse_expr()
+            self.consume(")")
+            return expr
+        if self.peek() == "^":
+            self.consume("^")
+            return {"type": "startsWith", "value": self.consume()}
+        return {"type": "contains", "value": self.consume()}
+
+
+# ── Django Q Builder ─────────────────────────────────────────
+
+
+def build_q(query: dict) -> Q:
+    """Convert a query dict into a Django Q object.
+
+    startsWith uses text_prefix for better index utilization.
+    All other filters use text.
+    """
+    match query["type"]:
+        case "contains":
+            return Q(text__icontains=query["value"])
+        case "startsWith":
+            return Q(text_prefix__istartswith=query["value"])
+        case "not":
+            return ~build_q(query["query"])
+        case "or":
+            result = Q()
+            for sub in query["queries"]:
+                result |= build_q(sub)
+            return result
+        case "and":
+            result = Q()
+            for sub in query["queries"]:
+                result &= build_q(sub)
+            return result
+        case _:
+            raise ValueError(f"Unknown query type: {query['type']}")
+
+
+# ── Custom QuerySet & Manager ────────────────────────────────
+
+
+class TextQuerySet(QuerySet):
+    def text_query(self, query: dict) -> TextQuerySet:
+        """Filter using a query dict (matching the Query schema)."""
+        return self.filter(build_q(query))
+
+    def query_string(self, qs: str) -> TextQuerySet:
+        """Filter using the shorthand query string syntax."""
+        return self.text_query(parse_query(qs))
+
+
+TextManager = CopyManager.from_queryset(TextQuerySet)
