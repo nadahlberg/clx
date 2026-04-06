@@ -36,6 +36,8 @@ class Project(Base):
     """Model for projects."""
 
     name = models.CharField(max_length=255)
+    instructions = models.TextField(blank=True, default="")
+    manual_instructions = models.BooleanField(default=False)
     active_label = models.ForeignKey(
         "Label",
         on_delete=models.SET_NULL,

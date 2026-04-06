@@ -177,19 +177,33 @@ def rename_label_api(request, project_id, label_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def rename_project_api(request, project_id):
-    """POST: rename a project."""
+def update_project_api(request, project_id):
+    """POST: update project settings."""
     project = get_object_or_404(Project, id=project_id)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
-    name = data.get("name", "").strip()
-    if not name:
-        return JsonResponse({"error": "name is required"}, status=400)
-    project.name = name
-    project.save(update_fields=["name", "updated_at"])
-    return JsonResponse({"id": str(project.id), "name": project.name})
+    update_fields = ["updated_at"]
+    if "name" in data:
+        name = data["name"].strip()
+        if not name:
+            return JsonResponse({"error": "name is required"}, status=400)
+        project.name = name
+        update_fields.append("name")
+    if "instructions" in data:
+        project.instructions = data["instructions"]
+        update_fields.append("instructions")
+    if "manual_instructions" in data:
+        project.manual_instructions = data["manual_instructions"]
+        update_fields.append("manual_instructions")
+    project.save(update_fields=update_fields)
+    return JsonResponse({
+        "id": str(project.id),
+        "name": project.name,
+        "instructions": project.instructions,
+        "manual_instructions": project.manual_instructions,
+    })
 
 
 @require_GET
