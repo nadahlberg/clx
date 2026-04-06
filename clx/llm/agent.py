@@ -7,6 +7,7 @@ import simplejson as json
 from pydantic import BaseModel, Field
 
 litellm.drop_params = True
+litellm.num_retries = 0
 
 logger = logging.getLogger("clx.llm")
 logger.setLevel(logging.DEBUG)
@@ -136,7 +137,10 @@ class Agent:
         model = completion_args.get("model", "?")
         usage = self.r.usage
         tokens = f"{usage.prompt_tokens}→{usage.completion_tokens}" if usage else "?"
-        cost = f"${getattr(litellm, 'completion_cost', lambda **_: 0)(completion_response=self.r):.4f}"
+        try:
+            cost = f"${litellm.completion_cost(completion_response=self.r):.4f}"
+        except Exception:
+            cost = "$?"
         tool_names = ""
         if response_message.get("tool_calls"):
             response_message["tool_calls"] = [
