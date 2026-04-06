@@ -1,10 +1,21 @@
 from typing import Any, ClassVar
 
+import logging
+
 import litellm
 import simplejson as json
 from pydantic import BaseModel, Field
 
 litellm.drop_params = True
+
+logger = logging.getLogger("clx.llm")
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(name)s] %(message)s", datefmt="%H:%M:%S")
+    )
+    logger.addHandler(handler)
 
 
 class Tool(BaseModel):
@@ -120,11 +131,22 @@ class Agent:
         # Make the completion call
         self.r = litellm.completion(**completion_args)
         response_message = dict(self.r.choices[0].message)
+
+        # Log the call
+        model = completion_args.get("model", "?")
+        usage = self.r.usage
+        tokens = f"{usage.prompt_tokens}→{usage.completion_tokens}" if usage else "?"
+        cost = f"${getattr(litellm, 'completion_cost', lambda **_: 0)(completion_response=self.r):.4f}"
+        tool_names = ""
         if response_message.get("tool_calls"):
             response_message["tool_calls"] = [
                 dict(tool_call, function=dict(tool_call.function))
                 for tool_call in response_message["tool_calls"]
             ]
+            tool_names = " → " + ", ".join(
+                tc["function"]["name"] for tc in response_message["tool_calls"]
+            )
+        logger.info(f"{model} | {tokens} tokens | {cost}{tool_names}")
         self.messages.append(response_message)
 
         # Run tools if present
@@ -134,6 +156,7 @@ class Agent:
                 tool = self.tools[tool_name]
                 tool_args = json.loads(tool_call["function"]["arguments"])
                 tool_response = tool(**tool_args)(self) or "Success"
+                logger.debug(f"  {tool_name}({tool_args}) → {tool_response[:100]}")
                 self.messages.append(
                     {
                         "tool_call_id": tool_call["id"],
