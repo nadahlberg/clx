@@ -33,6 +33,5 @@ project, _ = Project.objects.get_or_create(name="Docket Entry")
 chunks = pd.read_csv(PREPPED_PATH, chunksize=1000000)
 for chunk in chunks:
     project.add_docs(chunk)
-    break
 
 print(project.documents.count())
