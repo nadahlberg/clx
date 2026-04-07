@@ -32,6 +32,7 @@
          chatMessages: [],
          chatInput: '',
          chatSending: false,
+         threadUsage: null,
          selectedModel: '{{ default_model }}',
          modelDropdownOpen: false,
          modelIds: {{ model_ids|safe }},
@@ -50,12 +51,14 @@
              this.activeThread = thread;
              this.selectedModel = thread.model;
              this.chatMessages = [];
+             this.threadUsage = null;
              this.chatSending = this._sendingThreadId === thread.id;
              this.resetChatInput();
              fetch('/api/projects/{{ project.id }}/threads/' + thread.id + '/messages')
                  .then(r => r.json())
                  .then(data => {
                      this.chatMessages = data.messages.map(m => m.data).filter(d => d.role !== 'system');
+                     this.threadUsage = data.usage;
                      this.$nextTick(() => { this.scrollChat(); });
                  });
          },
@@ -98,6 +101,7 @@
                  // Only update chat UI if still viewing the same thread
                  if (this.activeThread && this.activeThread.id === threadId) {
                      this.chatMessages.push(...data.messages);
+                     this.threadUsage = data.usage;
                      this.chatSending = false;
                      this.$nextTick(() => { this.scrollChat(); });
                  }
@@ -210,6 +214,7 @@
              this.activeThread = null;
              this.chatMessages = [];
              this.chatInput = '';
+             this.threadUsage = null;
              fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
              this.fetchThreads();
              if (this.activeTab !== 'agent') this.fetchDocs();
@@ -406,9 +411,16 @@
         <div class="flex flex-col min-h-0">
             <!-- Tab: Agent (Chat) -->
             <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-slate-900 relative">
+                <!-- Thread usage stats (floating) -->
+                <div x-show="threadUsage && threadUsage.total_tokens > 0" x-cloak
+                     class="absolute top-3 left-3 z-10 px-2.5 py-1 text-[11px] rounded-md bg-slate-800/90 text-slate-500 shadow-md border border-slate-700 flex items-center gap-2">
+                    <span x-text="(threadUsage?.total_tokens || 0).toLocaleString() + ' tok'"></span>
+                    <span class="text-slate-700">|</span>
+                    <span x-text="'$' + (threadUsage?.total_cost || 0).toFixed(4)"></span>
+                </div>
                 <!-- New thread button (floating) -->
                 <button x-show="activeThread"
-                        @click="activeThread = null; chatMessages = []; chatSending = false"
+                        @click="activeThread = null; chatMessages = []; chatSending = false; threadUsage = null"
                         class="absolute top-3 right-3 z-10 px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700"
                         title="New thread">
                     <i class="fas fa-plus text-[10px] mr-1"></i> New thread

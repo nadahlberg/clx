@@ -319,7 +319,11 @@ def thread_messages_api(request, project_id, thread_id):
                     "num_tokens": m.num_tokens,
                 }
                 for m in messages
-            ]
+            ],
+            "usage": {
+                "total_tokens": thread.total_tokens,
+                "total_cost": thread.total_cost,
+            },
         }
     )
 
@@ -359,4 +363,13 @@ def send_message_api(request, project_id, thread_id):
         for m in agent.messages[msg_count_before + 1 :]
         if m.get("role") != "system"
     ]
-    return JsonResponse({"messages": new_messages})
+    thread.refresh_from_db(fields=["total_tokens", "total_cost"])
+    return JsonResponse(
+        {
+            "messages": new_messages,
+            "usage": {
+                "total_tokens": thread.total_tokens,
+                "total_cost": thread.total_cost,
+            },
+        }
+    )

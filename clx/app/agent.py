@@ -1,3 +1,5 @@
+import litellm
+
 from clx.app.models import Message
 from clx.app.tools import (
     AddTrainingExamples,
@@ -120,6 +122,25 @@ class CLXAgent(Agent):
         Message.objects.bulk_create(objects)
         self._persisted_count = len(self.messages)
 
-        # Persist agent state back to the thread.
+        # Accumulate usage on the thread.
+        if self.r and self.r.usage:
+            self.thread.total_tokens += getattr(
+                self.r.usage, "total_tokens", 0
+            )
+            try:
+                self.thread.total_cost += litellm.completion_cost(
+                    completion_response=self.r
+                )
+            except Exception:
+                pass
+
+        # Persist agent state and usage back to the thread.
         self.thread.state = self.state
-        self.thread.save(update_fields=["state", "updated_at"])
+        self.thread.save(
+            update_fields=[
+                "state",
+                "total_tokens",
+                "total_cost",
+                "updated_at",
+            ]
+        )

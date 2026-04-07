@@ -183,6 +183,8 @@ class Thread(Base):
         max_length=255, default=django_settings.DEFAULT_MODEL
     )
     state = models.JSONField(default=dict, blank=True)
+    total_tokens = models.IntegerField(default=0)
+    total_cost = models.FloatField(default=0.0)
 
 
 class LabelDocument(Base):
