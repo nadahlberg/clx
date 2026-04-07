@@ -4,7 +4,7 @@
 
 {% block content %}
 <div x-data="{
-         activeTab: 'agent',
+         activeTab: 'labels',
          documents: [],
          page: 1,
          hasNext: false,
@@ -318,9 +318,9 @@
         <!-- Tabs (centered) -->
         <div class="flex-1 flex items-stretch justify-center gap-3">
             <template x-for="tab in [
-                {id: 'agent', icon: 'fa-robot', label: 'Agent'},
-                {id: 'search', icon: 'fa-search', label: 'Search'},
                 {id: 'labels', icon: 'fa-tags', label: 'Labels'},
+                {id: 'search', icon: 'fa-search', label: 'Search'},
+                {id: 'agent', icon: 'fa-robot', label: 'Agent'},
                 {id: 'settings', icon: 'fa-gear', label: 'Settings'}
             ]" :key="tab.id">
                 <button @click="activeTab = tab.id"
