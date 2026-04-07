@@ -95,10 +95,9 @@
                  headers: {'Content-Type': 'application/json'},
                  body: JSON.stringify({content})
              }).then(r => r.json()).then(data => {
-                 // Update thread preview in sidebar with last assistant content
+                 // Set thread preview from first user message (only if not already set)
                  const t = this.threads.find(t => t.id === threadId);
-                 const lastAssistant = [...data.messages].reverse().find(m => m.role === 'assistant' && m.content);
-                 if (t && lastAssistant) t.preview = lastAssistant.content.substring(0, 100);
+                 if (t && !t.preview) t.preview = content.substring(0, 100);
                  // Only update chat UI if still viewing the same thread
                  if (this.activeThread && this.activeThread.id === threadId) {
                      this.chatMessages.push(...data.messages);

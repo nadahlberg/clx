@@ -122,11 +122,8 @@ class CLXAgent(Agent):
         Message.objects.bulk_create(objects)
         self._persisted_count = len(self.messages)
 
-        # Accumulate usage on the thread.
+        # Accumulate cost on the thread.
         if self.r and self.r.usage:
-            self.thread.total_tokens += getattr(
-                self.r.usage, "total_tokens", 0
-            )
             try:
                 self.thread.total_cost += litellm.completion_cost(
                     completion_response=self.r
@@ -134,12 +131,11 @@ class CLXAgent(Agent):
             except Exception:
                 pass
 
-        # Persist agent state and usage back to the thread.
+        # Persist agent state and cost back to the thread.
         self.thread.state = self.state
         self.thread.save(
             update_fields=[
                 "state",
-                "total_tokens",
                 "total_cost",
                 "updated_at",
             ]

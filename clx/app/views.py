@@ -1,7 +1,7 @@
 import json
 
 from django.conf import settings as django_settings
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
@@ -303,7 +303,7 @@ def label_threads_api(request, project_id, label_id):
     threads = label.threads.order_by("-updated_at")
     result = []
     for t in threads:
-        latest = t.messages.order_by("-created_at").first()
+        latest = t.messages.order_by("created_at").first()
         preview = ""
         if latest and latest.data.get("content"):
             preview = latest.data["content"][:100]
@@ -340,7 +340,8 @@ def thread_messages_api(request, project_id, thread_id):
     """GET: list messages for a thread."""
     project = get_object_or_404(Project, id=project_id)
     thread = get_object_or_404(Thread, id=thread_id, label__project=project)
-    messages = thread.messages.order_by("created_at")
+    messages = list(thread.messages.order_by("created_at"))
+    total_tokens = sum(m.num_tokens for m in messages)
     return JsonResponse(
         {
             "messages": [
@@ -352,7 +353,7 @@ def thread_messages_api(request, project_id, thread_id):
                 for m in messages
             ],
             "usage": {
-                "total_tokens": thread.total_tokens,
+                "total_tokens": total_tokens,
                 "total_cost": thread.total_cost,
             },
         }
@@ -394,12 +395,15 @@ def send_message_api(request, project_id, thread_id):
         for m in agent.messages[msg_count_before + 1 :]
         if m.get("role") != "system"
     ]
-    thread.refresh_from_db(fields=["total_tokens", "total_cost"])
+    thread.refresh_from_db(fields=["total_cost"])
+    total_tokens = thread.messages.aggregate(
+        total=Sum("num_tokens")
+    )["total"] or 0
     return JsonResponse(
         {
             "messages": new_messages,
             "usage": {
-                "total_tokens": thread.total_tokens,
+                "total_tokens": total_tokens,
                 "total_cost": thread.total_cost,
             },
         }
