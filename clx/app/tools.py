@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import Field
 from shortuuid import ShortUUID
 
-from clx.app.search import And, Contains, Not, Or, Query, StartsWith, build_q
+from clx.app.search import Query
 from clx.llm.agent import Tool
 
 _su = ShortUUID()
@@ -37,7 +37,10 @@ class Search(Tool):
 
         if not results:
             return f"[search:{search_id}] No documents found."
-        return f"[search:{search_id}] {len(results)} results:\n\n" + "\n---\n".join(results)
+        return (
+            f"[search:{search_id}] {len(results)} results:\n\n"
+            + "\n---\n".join(results)
+        )
 
 
 class UpdateLabelInstructions(Tool):

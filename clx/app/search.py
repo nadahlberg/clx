@@ -6,7 +6,6 @@ from django.db.models import Q
 from postgres_copy import CopyManager, CopyQuerySet
 from pydantic import BaseModel
 
-
 # ── Query Schema ─────────────────────────────────────────────
 
 
@@ -115,14 +114,18 @@ class _Parser:
         while self.peek() == ",":
             self.consume(",")
             parts.append(self.parse_or())
-        return parts[0] if len(parts) == 1 else {"type": "and", "queries": parts}
+        return (
+            parts[0] if len(parts) == 1 else {"type": "and", "queries": parts}
+        )
 
     def parse_or(self) -> dict:
         parts = [self.parse_unary()]
         while self.peek() == "|":
             self.consume("|")
             parts.append(self.parse_unary())
-        return parts[0] if len(parts) == 1 else {"type": "or", "queries": parts}
+        return (
+            parts[0] if len(parts) == 1 else {"type": "or", "queries": parts}
+        )
 
     def parse_unary(self) -> dict:
         if self.peek() == "~":

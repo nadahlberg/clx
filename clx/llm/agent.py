@@ -6,7 +6,6 @@ import simplejson as json
 from pydantic import BaseModel, Field
 
 litellm.drop_params = True
-litellm.num_retries = 0
 
 logger = logging.getLogger("clx.llm")
 logger.setLevel(logging.DEBUG)

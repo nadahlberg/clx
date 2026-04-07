@@ -121,7 +121,12 @@ def project_labels_api(request, project_id):
     return JsonResponse(
         {
             "labels": [
-                {"id": str(label.id), "name": label.name, "instructions": label.instructions} for label in labels
+                {
+                    "id": str(label.id),
+                    "name": label.name,
+                    "instructions": label.instructions,
+                }
+                for label in labels
             ],
             "active_label_id": str(project.active_label_id)
             if project.active_label_id
@@ -178,7 +183,13 @@ def rename_label_api(request, project_id, label_id):
         label.instructions = data["instructions"]
         update_fields.append("instructions")
     label.save(update_fields=update_fields)
-    return JsonResponse({"id": str(label.id), "name": label.name, "instructions": label.instructions})
+    return JsonResponse(
+        {
+            "id": str(label.id),
+            "name": label.name,
+            "instructions": label.instructions,
+        }
+    )
 
 
 @csrf_exempt
@@ -226,7 +237,9 @@ def delete_label_api(request, project_id, label_id):
     project = get_object_or_404(Project, id=project_id)
     label = get_object_or_404(Label, id=label_id, project=project)
     if project.labels.count() <= 1:
-        return JsonResponse({"error": "Cannot delete the only label."}, status=400)
+        return JsonResponse(
+            {"error": "Cannot delete the only label."}, status=400
+        )
     was_active = project.active_label_id == label.id
     label.delete()
     if was_active:
