@@ -1,6 +1,7 @@
 import json
 
 from django.conf import settings as django_settings
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
@@ -148,6 +149,23 @@ def project_labels_api(request, project_id):
             else None,
         }
     )
+
+
+@require_GET
+def label_stats_api(request, project_id, label_id):
+    """GET: annotation stats for a label's training set."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    from .models import LabelDocument
+
+    stats = LabelDocument.objects.filter(label=label).aggregate(
+        total=Count("id"),
+        yes=Count("id", filter=Q(annotations__value="yes", annotations__source="agent")),
+        no=Count("id", filter=Q(annotations__value="no", annotations__source="agent")),
+        skip=Count("id", filter=Q(annotations__value="skip", annotations__source="agent")),
+    )
+    stats["unannotated"] = stats["total"] - stats["yes"] - stats["no"] - stats["skip"]
+    return JsonResponse(stats)
 
 
 @csrf_exempt

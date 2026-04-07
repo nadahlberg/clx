@@ -34,6 +34,10 @@ urlpatterns = [
         views.rename_label_api,
     ),
     path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/stats",
+        views.label_stats_api,
+    ),
+    path(
         "api/projects/<str:project_id>/update",
         views.update_project_api,
     ),
