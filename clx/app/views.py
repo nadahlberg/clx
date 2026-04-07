@@ -344,7 +344,7 @@ def _active_token_count(thread, messages=None):
         .first()
     )
     if compact_msg:
-        qs = thread.messages.filter(created_at__gt=compact_msg)
+        qs = thread.messages.filter(created_at__gte=compact_msg)
     else:
         qs = thread.messages
     return qs.aggregate(total=Sum("num_tokens"))["total"] or 0
