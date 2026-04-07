@@ -15,14 +15,13 @@
          showQueryHelp: false,
          projectName: '{{ project.name|escapejs }}',
          projectInstructions: '{{ project.instructions|escapejs }}',
-         allowAIChanges: {{ project.manual_instructions|yesno:"false,true" }},
+         editingInstructions: false,
          activeLabel: null,
          labels: [],
          labelDropdownOpen: false,
          showCreateLabelModal: false,
          newLabelName: '',
-         showEditLabelModal: false,
-         editLabelName: '',
+         editingLabelInstructions: false,
          threads: [],
          activeThread: null,
          threadToDelete: null,
@@ -111,7 +110,6 @@
                      }).then(r => r.json()).then(p => {
                          this.projectName = p.name;
                          this.projectInstructions = p.instructions;
-                         this.allowAIChanges = !p.manual_instructions;
                      });
                  }
                  if (toolNames.includes('UpdateLabelInstructions')) {
@@ -220,18 +218,21 @@
                  this.showCreateLabelModal = false;
              });
          },
-         renameLabel() {
-             const name = this.editLabelName.trim();
-             if (!name || !this.activeLabel) return;
+         saveLabel() {
+             if (!this.activeLabel) return;
              fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/rename', {
                  method: 'POST',
                  headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({name})
+                 body: JSON.stringify({name: this.activeLabel.name, instructions: this.activeLabel.instructions || ''})
              }).then(r => r.json()).then(updated => {
                  this.activeLabel.name = updated.name;
+                 this.activeLabel.instructions = updated.instructions;
                  const idx = this.labels.findIndex(l => l.id === updated.id);
-                 if (idx !== -1) this.labels[idx].name = updated.name;
-                 this.showEditLabelModal = false;
+                 if (idx !== -1) {
+                     this.labels[idx].name = updated.name;
+                     this.labels[idx].instructions = updated.instructions;
+                 }
+                 this.editingLabelInstructions = false;
              });
          },
          saveProject() {
@@ -243,12 +244,11 @@
                  body: JSON.stringify({
                      name,
                      instructions: this.projectInstructions,
-                     manual_instructions: !this.allowAIChanges
                  })
              }).then(r => r.json()).then(updated => {
                  this.projectName = updated.name;
                  this.projectInstructions = updated.instructions;
-                 this.allowAIChanges = !updated.manual_instructions;
+                 this.editingInstructions = false;
              });
          }
      }"
@@ -606,14 +606,64 @@
 
             <!-- Tab: Settings -->
             <div x-show="activeTab === 'settings'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900">
-                <div class="shrink-0 px-4 py-3 flex items-center justify-between">
-                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Settings</h3>
-                    <button @click="saveProject()"
-                            class="px-4 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
-                        Save
-                    </button>
+                <div class="flex-1 overflow-y-auto scrollable-panel scrollable-dark">
+                <!-- Label Settings -->
+                <div class="border-b border-slate-800 pb-1">
+                    <div class="px-4 py-3 flex items-center justify-between">
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Label Settings</h3>
+                        <button @click="saveLabel()"
+                                class="px-4 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
+                            Save
+                        </button>
+                    </div>
+                    <div class="px-4 pb-4 space-y-4" x-show="activeLabel">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Label Name</label>
+                            <input type="text"
+                                   x-model="activeLabel.name"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-sm font-medium text-slate-300">Instructions</label>
+                                <button @click="editingLabelInstructions = !editingLabelInstructions; if (editingLabelInstructions) { $nextTick(() => { const ta = document.getElementById('label-instructions-textarea'); if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; ta.focus(); } }); }"
+                                        class="flex items-center gap-1.5 text-xs transition-colors"
+                                        :class="editingLabelInstructions ? 'text-indigo-400 hover:text-indigo-300' : 'text-slate-500 hover:text-slate-300'">
+                                    <i class="fas" :class="editingLabelInstructions ? 'fa-eye' : 'fa-pen'"></i>
+                                    <span x-text="editingLabelInstructions ? 'Preview' : 'Edit'"></span>
+                                </button>
+                            </div>
+                            <div x-show="!editingLabelInstructions"
+                                 class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 min-h-[2.5rem]">
+                                <div x-show="activeLabel.instructions && activeLabel.instructions.trim()"
+                                     class="text-sm text-slate-300 prose-chat prose-chat-dark"
+                                     x-html="renderMarkdown(activeLabel.instructions || '')"></div>
+                                <p x-show="!activeLabel.instructions || !activeLabel.instructions.trim()" class="text-sm text-slate-600 italic">No instructions yet.</p>
+                            </div>
+                            <textarea x-show="editingLabelInstructions" x-cloak
+                                      id="label-instructions-textarea"
+                                      x-model="activeLabel.instructions"
+                                      @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                      rows="3"
+                                      placeholder="Label-specific instructions for the agent..."
+                                      class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-slate-600"></textarea>
+                        </div>
+                    </div>
+                    <div x-show="!activeLabel" class="px-4 pb-4">
+                        <p class="text-sm text-slate-500">No label selected.</p>
+                    </div>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-4 scrollable-panel scrollable-dark">
+
+                <!-- Project Settings -->
+                <div>
+                    <div class="px-4 py-3 flex items-center justify-between">
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Settings</h3>
+                        <button @click="saveProject()"
+                                class="px-4 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
+                            Save
+                        </button>
+                    </div>
+                    <div class="px-4 pb-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
                         <input type="text"
@@ -623,24 +673,33 @@
                     <div>
                         <div class="flex items-center justify-between mb-1">
                             <label class="text-sm font-medium text-slate-300">Instructions</label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <span class="text-xs text-slate-500">Allow AI Changes</span>
-                                <button @click="allowAIChanges = !allowAIChanges"
-                                        class="relative w-8 h-[18px] rounded-full transition-colors"
-                                        :class="allowAIChanges ? 'bg-indigo-600' : 'bg-slate-600'">
-                                    <span class="absolute top-[2px] left-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform"
-                                          :class="allowAIChanges ? 'translate-x-[14px]' : ''"></span>
-                                </button>
-                            </label>
+                            <button @click="editingInstructions = !editingInstructions; if (editingInstructions) { $nextTick(() => { const ta = document.getElementById('instructions-textarea'); if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; ta.focus(); } }); }"
+                                    class="flex items-center gap-1.5 text-xs transition-colors"
+                                    :class="editingInstructions ? 'text-indigo-400 hover:text-indigo-300' : 'text-slate-500 hover:text-slate-300'">
+                                <i class="fas" :class="editingInstructions ? 'fa-eye' : 'fa-pen'"></i>
+                                <span x-text="editingInstructions ? 'Preview' : 'Edit'"></span>
+                            </button>
                         </div>
-                        <textarea x-model="projectInstructions"
-                                  x-effect="if (activeTab === 'settings') { $nextTick(() => { $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'; }) }"
+                        <!-- Markdown view -->
+                        <div x-show="!editingInstructions"
+                             class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 min-h-[2.5rem]">
+                            <div x-show="projectInstructions.trim()"
+                                 class="text-sm text-slate-300 prose-chat prose-chat-dark"
+                                 x-html="renderMarkdown(projectInstructions)"></div>
+                            <p x-show="!projectInstructions.trim()" class="text-sm text-slate-600 italic">No instructions yet.</p>
+                        </div>
+                        <!-- Edit view -->
+                        <textarea x-show="editingInstructions" x-cloak
+                                  id="instructions-textarea"
+                                  x-model="projectInstructions"
                                   @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
                                   rows="3"
                                   placeholder="Project-level instructions for the agent..."
                                   class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-slate-600"></textarea>
                     </div>
                 </div>
+                </div><!-- /Project Settings -->
+                </div><!-- /scrollable -->
             </div>
         </div>
 
@@ -652,16 +711,10 @@
                     <i class="fas fa-chevron-down text-slate-500 text-xs shrink-0"></i>
                     <span x-text="activeLabel ? activeLabel.name : 'No label'" class="truncate"></span>
                 </button>
-                <div class="flex items-center gap-1 shrink-0">
-                    <button @click="newLabelName = ''; showCreateLabelModal = true"
-                            class="p-1.5 text-slate-500 hover:text-slate-300 transition-colors" title="New label">
-                        <i class="fas fa-plus text-xs"></i>
-                    </button>
-                    <button @click="editLabelName = activeLabel ? activeLabel.name : ''; showEditLabelModal = true"
-                            class="p-1.5 text-slate-500 hover:text-slate-300 transition-colors" title="Edit label">
-                        <i class="fas fa-gear text-xs"></i>
-                    </button>
-                </div>
+                <button @click="newLabelName = ''; showCreateLabelModal = true"
+                        class="p-1.5 text-slate-500 hover:text-slate-300 transition-colors shrink-0" title="New label">
+                    <i class="fas fa-plus text-xs"></i>
+                </button>
                 <!-- Label dropdown -->
                 <div x-show="labelDropdownOpen"
                      x-cloak
@@ -706,35 +759,6 @@
                     <button type="submit"
                             class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500">
                         Create
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Label Modal -->
-    <div x-show="showEditLabelModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-         @keydown.escape.window="showEditLabelModal = false">
-        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-modal p-6 w-full max-w-sm"
-             @click.outside="showEditLabelModal = false">
-            <h2 class="text-lg font-semibold text-slate-200 mb-4">Edit Label</h2>
-            <form @submit.prevent="renameLabel()">
-                <label class="block text-sm font-medium text-slate-400 mb-1">Label Name</label>
-                <input type="text"
-                       x-model="editLabelName"
-                       required
-                       class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 mb-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-slate-500"
-                       placeholder="Enter label name">
-                <div class="flex justify-end gap-3">
-                    <button type="button"
-                            @click="showEditLabelModal = false"
-                            class="px-4 py-2 text-sm text-slate-400 hover:text-slate-200">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500">
-                        Save
                     </button>
                 </div>
             </form>

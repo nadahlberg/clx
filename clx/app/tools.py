@@ -53,7 +53,7 @@ class UpdateLabelInstructions(Tool):
 
 
 class UpdateProjectInstructions(Tool):
-    """Update the project-level instructions. Use 'append' to add new content to the end of existing instructions, or 'replace' to rewrite them entirely. You can see the current instructions in your system prompt. Only use this if the project's manual_instructions flag is not set."""
+    """Update the project-level instructions. Use 'append' to add new content to the end of existing instructions, or 'replace' to rewrite them entirely. You can see the current instructions in your system prompt."""
 
     mode: Literal["append", "replace"] = Field(
         description="'append' to add to existing instructions, 'replace' to overwrite"
@@ -64,10 +64,6 @@ class UpdateProjectInstructions(Tool):
 
     def __call__(self, agent):
         project = agent.thread.label.project
-        if project.manual_instructions:
-            return (
-                "Cannot update: project instructions are set to manual-only."
-            )
         if self.mode == "append":
             if project.instructions.strip():
                 project.instructions = (
