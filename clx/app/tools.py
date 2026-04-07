@@ -137,6 +137,8 @@ class AddDocumentsToLabel(Tool):
             search = searches.get(self.search_id)
             if not search:
                 return f"Error: search '{self.search_id}' not found in state."
+            if "document_ids" not in search:
+                return f"Error: search '{self.search_id}' has no stored document IDs. Please run the search again."
             doc_ids = search["document_ids"]
             if self.num_docs is not None:
                 doc_ids = doc_ids[: self.num_docs]
