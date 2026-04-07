@@ -26,6 +26,8 @@
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
@@ -34,7 +36,33 @@
         .scrollable-panel {
             overflow-y: auto;
         }
+        /* Markdown prose inside chat bubbles */
+        .prose-chat { overflow-wrap: break-word; word-break: break-word; }
+        .prose-chat p { margin: 0.35em 0; }
+        .prose-chat p:first-child { margin-top: 0; }
+        .prose-chat p:last-child { margin-bottom: 0; }
+        .prose-chat ul, .prose-chat ol { margin: 0.35em 0; padding-left: 1.4em; }
+        .prose-chat li { margin: 0.15em 0; }
+        .prose-chat pre { background: rgba(0,0,0,0.06); border-radius: 0.375rem; padding: 0.5em 0.75em; overflow-x: auto; margin: 0.5em 0; }
+        .prose-chat code { font-size: 0.85em; }
+        .prose-chat :not(pre) > code { background: rgba(0,0,0,0.06); padding: 0.15em 0.35em; border-radius: 0.25rem; }
+        .prose-chat h1, .prose-chat h2, .prose-chat h3 { font-weight: 600; margin: 0.5em 0 0.25em; }
+        .prose-chat h1 { font-size: 1.15em; }
+        .prose-chat h2 { font-size: 1.05em; }
+        .prose-chat h3 { font-size: 1em; }
+        .prose-chat blockquote { border-left: 3px solid rgba(0,0,0,0.15); padding-left: 0.75em; margin: 0.35em 0; color: inherit; opacity: 0.8; }
+        .prose-chat table { border-collapse: collapse; margin: 0.5em 0; }
+        .prose-chat th, .prose-chat td { border: 1px solid rgba(0,0,0,0.15); padding: 0.25em 0.5em; font-size: 0.9em; }
+        /* White variant for user bubbles */
+        .prose-chat-white pre { background: rgba(255,255,255,0.15); }
+        .prose-chat-white :not(pre) > code { background: rgba(255,255,255,0.15); }
+        .prose-chat-white blockquote { border-left-color: rgba(255,255,255,0.4); }
+        .prose-chat-white th, .prose-chat-white td { border-color: rgba(255,255,255,0.3); }
     </style>
+    <script>
+        marked.setOptions({ breaks: true, gfm: true });
+        window.renderMarkdown = (text) => text ? DOMPurify.sanitize(marked.parse(text)) : '';
+    </script>
 </head>
 <body class="font-sans bg-muted text-gray-800 antialiased h-screen flex flex-col overflow-hidden">
     {% block navbar %}

@@ -338,7 +338,7 @@
                                 <template x-if="msg.role === 'user'">
                                     <div class="flex justify-end">
                                         <div class="max-w-[80%] rounded-lg px-4 py-2.5 bg-blue-600 text-white">
-                                            <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                            <div class="text-sm prose-chat prose-chat-white" x-html="renderMarkdown(msg.content)"></div>
                                         </div>
                                     </div>
                                 </template>
@@ -363,7 +363,7 @@
                                                 </div>
                                             </template>
                                             <div class="rounded-lg px-4 py-2.5 bg-gray-100 text-gray-800">
-                                                <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                                                <div class="text-sm prose-chat" x-html="renderMarkdown(msg.content)"></div>
                                             </div>
                                         </div>
                                     </div>
