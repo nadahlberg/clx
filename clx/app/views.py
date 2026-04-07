@@ -94,7 +94,9 @@ def project_docs_api(request, project_id):
     """GET: paginated documents for a project."""
     project = get_object_or_404(Project, id=project_id)
     page_number = max(1, int(request.GET.get("page", 1)))
-    documents, label_id, has_annotation_col = _filtered_documents(project, request)
+    documents, label_id, has_annotation_col = _filtered_documents(
+        project, request
+    )
     # Attach annotation values in a single subquery when a label is active.
     if label_id and not has_annotation_col:
         documents = documents.with_annotation(label_id)
@@ -160,11 +162,22 @@ def label_stats_api(request, project_id, label_id):
 
     stats = LabelDocument.objects.filter(label=label).aggregate(
         total=Count("id"),
-        yes=Count("id", filter=Q(annotations__value="yes", annotations__source="agent")),
-        no=Count("id", filter=Q(annotations__value="no", annotations__source="agent")),
-        skip=Count("id", filter=Q(annotations__value="skip", annotations__source="agent")),
+        yes=Count(
+            "id",
+            filter=Q(annotations__value="yes", annotations__source="agent"),
+        ),
+        no=Count(
+            "id",
+            filter=Q(annotations__value="no", annotations__source="agent"),
+        ),
+        skip=Count(
+            "id",
+            filter=Q(annotations__value="skip", annotations__source="agent"),
+        ),
     )
-    stats["unannotated"] = stats["total"] - stats["yes"] - stats["no"] - stats["skip"]
+    stats["unannotated"] = (
+        stats["total"] - stats["yes"] - stats["no"] - stats["skip"]
+    )
     return JsonResponse(stats)
 
 

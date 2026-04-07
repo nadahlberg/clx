@@ -178,8 +178,12 @@ class AddTrainingExamples(Tool):
 
 
 class AnnotationItem(BaseModel):
-    document_id: str = Field(description="The document ID (short UUID from search results).")
-    value: Literal["yes", "no", "skip"] = Field(description="The classification value.")
+    document_id: str = Field(
+        description="The document ID (short UUID from search results)."
+    )
+    value: Literal["yes", "no", "skip"] = Field(
+        description="The classification value."
+    )
 
 
 class Annotate(Tool):
@@ -224,7 +228,9 @@ class Annotate(Tool):
 
         parts = [f"Annotated {len(valid)} document(s)."]
         if missing:
-            parts.append(f"Skipped {len(missing)} not in training set (add with AddTrainingExamples): {', '.join(missing)}")
+            parts.append(
+                f"Skipped {len(missing)} not in training set (add with AddTrainingExamples): {', '.join(missing)}"
+            )
         return " ".join(parts)
 
 
