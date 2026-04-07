@@ -210,6 +210,30 @@ def update_project_api(request, project_id):
     )
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_project_api(request, project_id):
+    """POST: delete a project."""
+    project = get_object_or_404(Project, id=project_id)
+    project.delete()
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_label_api(request, project_id, label_id):
+    """POST: delete a label."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    was_active = project.active_label_id == label.id
+    label.delete()
+    if was_active:
+        new_active = project.labels.first()
+        project.active_label = new_active
+        project.save(update_fields=["active_label", "updated_at"])
+    return JsonResponse({"ok": True})
+
+
 @require_GET
 def label_threads_api(request, project_id, label_id):
     """GET: list threads for a label with latest message preview."""

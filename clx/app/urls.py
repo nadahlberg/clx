@@ -38,6 +38,14 @@ urlpatterns = [
         views.update_project_api,
     ),
     path(
+        "api/projects/<str:project_id>/delete",
+        views.delete_project_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/delete",
+        views.delete_label_api,
+    ),
+    path(
         "api/projects/<str:project_id>/labels/<str:label_id>/threads",
         views.label_threads_api,
     ),
