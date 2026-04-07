@@ -30,7 +30,7 @@ class Search(Tool):
         documents = project.documents.order_by("shuffle_key")
         documents = documents.text_query(self.query.model_dump())
         if self.label_only:
-            documents = documents.for_label(agent.thread.label_id)
+            documents = documents.training_examples(agent.thread.label_id)
         rows = list(
             documents.values_list("id", "text")[:num_results]
         )
@@ -106,8 +106,8 @@ class UpdateProjectInstructions(Tool):
         return f"Project instructions updated ({self.mode})."
 
 
-class AddDocumentsToLabel(Tool):
-    """Add documents to the current label. Preferred: pass search_id from a previous Search call to add those results. Alternatively, pass explicit document_ids (the short UUIDs shown as doc_id= in search results). Do not pass both."""
+class AddTrainingExamples(Tool):
+    """Add documents to the current label's training set. These become reference examples for classification. Preferred: pass search_id from a previous Search call. Alternatively, pass explicit document_ids (the short UUIDs shown as doc_id= in search results). Do not pass both."""
 
     search_id: str | None = Field(
         default=None,
@@ -160,7 +160,7 @@ class AddDocumentsToLabel(Tool):
             LabelDocument(label=label, document_id=did) for did in doc_ids
         ]
         LabelDocument.objects.bulk_create(objects, ignore_conflicts=True)
-        return f"Added {len(doc_ids)} document(s) to label '{label.name}' (duplicates ignored)."
+        return f"Added {len(doc_ids)} training example(s) to label '{label.name}' (duplicates ignored)."
 
 
 class AskUser(Tool):

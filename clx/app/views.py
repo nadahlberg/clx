@@ -76,7 +76,7 @@ def _filtered_documents(project, request):
         documents = documents.query_string(qs)
     label_id = request.GET.get("label", "").strip()
     if label_id:
-        documents = documents.for_label(label_id)
+        documents = documents.training_examples(label_id)
     return documents
 
 
