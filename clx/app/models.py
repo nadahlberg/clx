@@ -89,6 +89,9 @@ class Project(Base):
 
         # Build DataFrame
         data = pd.DataFrame(docs)
+        data = data.dropna(subset=["text"])
+        if len(data) == 0:
+            return
         data["id"] = [uuid() for _ in range(len(data))]
         data["text_prefix"] = data["text"].str[:50]
         data["text_hash"] = data["text"].apply(generate_hash)
@@ -103,6 +106,7 @@ class Project(Base):
         f.seek(0)
 
         # Bulk insert
+        print("Pushing documents to database...")
         Document.objects.from_csv(
             f,
             static_mapping={

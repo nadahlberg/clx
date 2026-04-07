@@ -10,6 +10,7 @@ PREPPED_PATH = (
 
 if not PREPPED_PATH.exists():
     data = pd.read_csv(DATA_PATH)
+    data = data.drop(columns=["meta", "cites"])
 
     short_data = data[data["short_description"].notna()]
     short_data = short_data.drop(columns=["description"])
@@ -25,13 +26,13 @@ if not PREPPED_PATH.exists():
 
     data = pd.concat([short_data, long_data])
     data = data.drop_duplicates(subset=["text"])
+    data = data.dropna(subset=["text"])
     print(data)
 
     data.to_csv(PREPPED_PATH, index=False)
 
 project, _ = Project.objects.get_or_create(name="Docket Entry")
 
-
-chunks = pd.read_csv(PREPPED_PATH, chunksize=500000)
+chunks = pd.read_csv(PREPPED_PATH, chunksize=5000)
 for chunk in chunks:
     project.add_docs(chunk)
