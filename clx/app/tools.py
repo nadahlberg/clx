@@ -23,14 +23,23 @@ class Search(Tool):
         default=False,
         description="If true, only search documents already added to the current label.",
     )
+    count_only: bool = Field(
+        default=False,
+        description="If true, return only the count of matching documents (num_results is ignored).",
+    )
 
     def __call__(self, agent):
         project = agent.thread.label.project
-        num_results = min(self.num_results, 100)
         documents = project.documents.order_by("shuffle_key")
         documents = documents.text_query(self.query.model_dump())
         if self.label_only:
             documents = documents.training_examples(agent.thread.label_id)
+
+        if self.count_only:
+            total = documents.count()
+            return f"{total} document(s) match."
+
+        num_results = min(self.num_results, 100)
         rows = list(
             documents.values_list("id", "text")[:num_results]
         )
