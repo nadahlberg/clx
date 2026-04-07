@@ -242,12 +242,6 @@
 
             <!-- Agent tab: Thread history -->
             <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel">
-                <!-- New thread button -->
-                <button @click="activeThread = null; chatMessages = []; chatSending = false"
-                        class="w-full px-4 py-3 text-left border-b border-border hover:bg-gray-50 transition-colors flex items-center gap-2 shrink-0">
-                    <i class="fas fa-plus text-gray-400 text-xs"></i>
-                    <span class="text-sm text-gray-500">New thread</span>
-                </button>
                 <!-- Thread list -->
                 <template x-for="thread in threads" :key="thread.id">
                     <div @click="selectThread(thread)"
@@ -324,7 +318,14 @@
             </div>
 
             <!-- Tab: Agent (Chat) -->
-            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-surface">
+            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-surface relative">
+                <!-- New thread button (floating) -->
+                <button x-show="activeThread"
+                        @click="activeThread = null; chatMessages = []; chatSending = false"
+                        class="absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center rounded-md bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition-colors shadow-sm"
+                        title="New thread">
+                    <i class="fas fa-plus text-xs"></i>
+                </button>
                 <!-- Chat messages -->
                 <div id="chat-scroll" class="flex-1 overflow-y-auto p-4">
                     <div x-show="chatMessages.length === 0 && !chatSending" class="flex items-center justify-center h-full">
