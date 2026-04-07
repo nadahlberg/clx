@@ -624,7 +624,7 @@
                             </label>
                         </div>
                         <textarea x-model="projectInstructions"
-                                  x-init="$nextTick(() => { $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'; })"
+                                  x-effect="if (activeTab === 'settings') { $nextTick(() => { $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'; }) }"
                                   @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
                                   rows="3"
                                   placeholder="Project-level instructions for the agent..."
