@@ -182,6 +182,7 @@ class Thread(Base):
     model = models.CharField(
         max_length=255, default=django_settings.DEFAULT_MODEL
     )
+    state = models.JSONField(default=dict, blank=True)
 
 
 class Message(Base):

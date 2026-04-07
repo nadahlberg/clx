@@ -89,6 +89,7 @@ class CLXAgent(Agent):
         super().__init__(
             model=thread.model,
             messages=messages,
+            state=thread.state or {},
             **kwargs,
         )
 
@@ -114,3 +115,7 @@ class CLXAgent(Agent):
             )
         Message.objects.bulk_create(objects)
         self._persisted_count = len(self.messages)
+
+        # Persist agent state back to the thread.
+        self.thread.state = self.state
+        self.thread.save(update_fields=["state", "updated_at"])

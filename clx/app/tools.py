@@ -1,9 +1,12 @@
 from typing import Literal
 
 from pydantic import Field
+from shortuuid import ShortUUID
 
 from clx.app.search import And, Contains, Not, Or, Query, StartsWith, build_q
 from clx.llm.agent import Tool
+
+_su = ShortUUID()
 
 
 class Search(Tool):
@@ -22,9 +25,19 @@ class Search(Tool):
         documents = project.documents.order_by("shuffle_key")
         documents = documents.text_query(self.query.model_dump())
         results = list(documents.values_list("text", flat=True)[:num_results])
+
+        # Generate a short search ID and store in agent state.
+        search_id = _su.random(length=8)
+        searches = agent.state.setdefault("searches", {})
+        searches[search_id] = {
+            "query": self.query.model_dump(),
+            "num_results": num_results,
+            "result_count": len(results),
+        }
+
         if not results:
-            return "No documents found."
-        return "\n---\n".join(results)
+            return f"[search:{search_id}] No documents found."
+        return f"[search:{search_id}] {len(results)} results:\n\n" + "\n---\n".join(results)
 
 
 class UpdateLabelInstructions(Tool):
