@@ -1,10 +1,12 @@
 import pandas as pd
 
-from clx.settings import CLX_HOME
 from clx.models import Project
+from clx.settings import CLX_HOME
 
 DATA_PATH = CLX_HOME / "experiments" / "docket-data" / "docket_data.csv"
-PREPPED_PATH = CLX_HOME / "experiments" / "docket-data" / "docket_data_prepped.csv"
+PREPPED_PATH = (
+    CLX_HOME / "experiments" / "docket-data" / "docket_data_prepped.csv"
+)
 
 if not PREPPED_PATH.exists():
     data = pd.read_csv(DATA_PATH)
@@ -30,8 +32,6 @@ if not PREPPED_PATH.exists():
 project, _ = Project.objects.get_or_create(name="Docket Entry")
 
 
-chunks = pd.read_csv(PREPPED_PATH, chunksize=1000000)
+chunks = pd.read_csv(PREPPED_PATH, chunksize=500000)
 for chunk in chunks:
     project.add_docs(chunk)
-
-print(project.documents.count())

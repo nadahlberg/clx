@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Literal
 
-from django.db.models import Q, QuerySet
-from postgres_copy import CopyManager
+from django.db.models import Q
+from postgres_copy import CopyManager, CopyQuerySet
 from pydantic import BaseModel
 
 
@@ -175,14 +175,15 @@ def build_q(query: dict) -> Q:
 # ── Custom QuerySet & Manager ────────────────────────────────
 
 
-class TextQuerySet(QuerySet):
-    def text_query(self, query: dict) -> TextQuerySet:
+class SearchQuerySet(CopyQuerySet):
+    def text_query(self, query: dict) -> SearchQuerySet:
         """Filter using a query dict (matching the Query schema)."""
         return self.filter(build_q(query))
 
-    def query_string(self, qs: str) -> TextQuerySet:
+    def query_string(self, qs: str) -> SearchQuerySet:
         """Filter using the shorthand query string syntax."""
         return self.text_query(parse_query(qs))
 
 
-TextManager = CopyManager.from_queryset(TextQuerySet)
+class SearchManager(CopyManager.from_queryset(SearchQuerySet)):
+    pass

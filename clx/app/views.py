@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Label, Message, Project, Thread
+from .models import Label, Project, Thread
 
 DOCS_PER_PAGE = 100
 
@@ -121,7 +121,7 @@ def project_labels_api(request, project_id):
     return JsonResponse(
         {
             "labels": [
-                {"id": str(l.id), "name": l.name} for l in labels
+                {"id": str(label.id), "name": label.name} for label in labels
             ],
             "active_label_id": str(project.active_label_id)
             if project.active_label_id
@@ -198,12 +198,14 @@ def update_project_api(request, project_id):
         project.manual_instructions = data["manual_instructions"]
         update_fields.append("manual_instructions")
     project.save(update_fields=update_fields)
-    return JsonResponse({
-        "id": str(project.id),
-        "name": project.name,
-        "instructions": project.instructions,
-        "manual_instructions": project.manual_instructions,
-    })
+    return JsonResponse(
+        {
+            "id": str(project.id),
+            "name": project.name,
+            "instructions": project.instructions,
+            "manual_instructions": project.manual_instructions,
+        }
+    )
 
 
 @require_GET
@@ -218,12 +220,14 @@ def label_threads_api(request, project_id, label_id):
         preview = ""
         if latest and latest.data.get("content"):
             preview = latest.data["content"][:100]
-        result.append({
-            "id": str(t.id),
-            "model": t.model,
-            "preview": preview,
-            "updated_at": t.updated_at.isoformat(),
-        })
+        result.append(
+            {
+                "id": str(t.id),
+                "model": t.model,
+                "preview": preview,
+                "updated_at": t.updated_at.isoformat(),
+            }
+        )
     return JsonResponse({"threads": result})
 
 
@@ -248,9 +252,7 @@ def create_thread_api(request, project_id, label_id):
 def thread_messages_api(request, project_id, thread_id):
     """GET: list messages for a thread."""
     project = get_object_or_404(Project, id=project_id)
-    thread = get_object_or_404(
-        Thread, id=thread_id, label__project=project
-    )
+    thread = get_object_or_404(Thread, id=thread_id, label__project=project)
     messages = thread.messages.order_by("created_at")
     return JsonResponse(
         {
@@ -271,9 +273,7 @@ def thread_messages_api(request, project_id, thread_id):
 def delete_thread_api(request, project_id, thread_id):
     """POST: delete a thread."""
     project = get_object_or_404(Project, id=project_id)
-    thread = get_object_or_404(
-        Thread, id=thread_id, label__project=project
-    )
+    thread = get_object_or_404(Thread, id=thread_id, label__project=project)
     thread.delete()
     return JsonResponse({"ok": True})
 
@@ -283,9 +283,7 @@ def delete_thread_api(request, project_id, thread_id):
 def send_message_api(request, project_id, thread_id):
     """POST: send a user message and get an agent response."""
     project = get_object_or_404(Project, id=project_id)
-    thread = get_object_or_404(
-        Thread, id=thread_id, label__project=project
-    )
+    thread = get_object_or_404(Thread, id=thread_id, label__project=project)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -301,7 +299,8 @@ def send_message_api(request, project_id, thread_id):
     agent.run(content)
     # Return all new messages (skipping the user message already shown)
     new_messages = [
-        m for m in agent.messages[msg_count_before + 1:]
+        m
+        for m in agent.messages[msg_count_before + 1 :]
         if m.get("role") != "system"
     ]
     return JsonResponse({"messages": new_messages})

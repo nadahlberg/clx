@@ -1,6 +1,5 @@
-from typing import Any, ClassVar
-
 import logging
+from typing import Any, ClassVar
 
 import litellm
 import simplejson as json
@@ -14,7 +13,9 @@ logger.setLevel(logging.DEBUG)
 if not logger.handlers:
     handler = logging.StreamHandler()
     handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(name)s] %(message)s", datefmt="%H:%M:%S")
+        logging.Formatter(
+            "%(asctime)s [%(name)s] %(message)s", datefmt="%H:%M:%S"
+        )
     )
     logger.addHandler(handler)
 
@@ -97,7 +98,11 @@ class Agent:
     def sanitized_messages(self):
         """Strip internal fields from messages, preserving provider fields."""
         return [
-            {k: v for k, v in message.items() if k not in self._internal_fields}
+            {
+                k: v
+                for k, v in message.items()
+                if k not in self._internal_fields
+            }
             for message in self.messages
         ]
 
@@ -136,9 +141,15 @@ class Agent:
         # Log the call
         model = completion_args.get("model", "?")
         usage = self.r.usage
-        tokens = f"{usage.prompt_tokens}→{usage.completion_tokens}" if usage else "?"
+        tokens = (
+            f"{usage.prompt_tokens}→{usage.completion_tokens}"
+            if usage
+            else "?"
+        )
         try:
-            cost = f"${litellm.completion_cost(completion_response=self.r):.4f}"
+            cost = (
+                f"${litellm.completion_cost(completion_response=self.r):.4f}"
+            )
         except Exception:
             cost = "$?"
         tool_names = ""
@@ -160,7 +171,9 @@ class Agent:
                 tool = self.tools[tool_name]
                 tool_args = json.loads(tool_call["function"]["arguments"])
                 tool_response = tool(**tool_args)(self) or "Success"
-                logger.debug(f"  {tool_name}({tool_args}) → {tool_response[:100]}")
+                logger.debug(
+                    f"  {tool_name}({tool_args}) → {tool_response[:100]}"
+                )
                 self.messages.append(
                     {
                         "tool_call_id": tool_call["id"],

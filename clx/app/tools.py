@@ -3,7 +3,6 @@ from typing import Literal
 from pydantic import Field
 
 from clx.llm.agent import Tool
-from clx.query import parse_query
 
 
 class Search(Tool):
@@ -20,9 +19,7 @@ class Search(Tool):
         documents = project.documents.order_by("shuffle_key")
         if self.query.strip():
             documents = documents.query_string(self.query)
-        results = list(
-            documents.values_list("text", flat=True)[:num_results]
-        )
+        results = list(documents.values_list("text", flat=True)[:num_results])
         if not results:
             return "No documents found."
         return "\n---\n".join(results)
@@ -34,13 +31,17 @@ class UpdateLabelInstructions(Tool):
     mode: Literal["append", "replace"] = Field(
         description="'append' to add to existing instructions, 'replace' to overwrite"
     )
-    content: str = Field(description="The instruction content to append or replace with")
+    content: str = Field(
+        description="The instruction content to append or replace with"
+    )
 
     def __call__(self, agent):
         label = agent.thread.label
         if self.mode == "append":
             if label.instructions.strip():
-                label.instructions = label.instructions.rstrip() + "\n\n" + self.content
+                label.instructions = (
+                    label.instructions.rstrip() + "\n\n" + self.content
+                )
             else:
                 label.instructions = self.content
         else:
@@ -55,15 +56,21 @@ class UpdateProjectInstructions(Tool):
     mode: Literal["append", "replace"] = Field(
         description="'append' to add to existing instructions, 'replace' to overwrite"
     )
-    content: str = Field(description="The instruction content to append or replace with")
+    content: str = Field(
+        description="The instruction content to append or replace with"
+    )
 
     def __call__(self, agent):
         project = agent.thread.label.project
         if project.manual_instructions:
-            return "Cannot update: project instructions are set to manual-only."
+            return (
+                "Cannot update: project instructions are set to manual-only."
+            )
         if self.mode == "append":
             if project.instructions.strip():
-                project.instructions = project.instructions.rstrip() + "\n\n" + self.content
+                project.instructions = (
+                    project.instructions.rstrip() + "\n\n" + self.content
+                )
             else:
                 project.instructions = self.content
         else:

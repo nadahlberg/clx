@@ -8,11 +8,11 @@ from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils import timezone
 from django_shortuuid.fields import ShortUUIDField
-from postgres_copy import CopyManager
 from shortuuid import uuid
 
-from clx.query import TextManager
 from clx.utils import generate_hash
+
+from .search import SearchManager
 
 
 class Base(models.Model):
@@ -22,7 +22,7 @@ class Base(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(default=timezone.now)
 
-    objects = CopyManager()
+    objects = SearchManager()
 
     class Meta:
         abstract = True
@@ -127,8 +127,6 @@ class Document(Base):
     shuffle_key = models.IntegerField()
     text_hash = models.CharField(max_length=64)
 
-    objects = TextManager()
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -178,7 +176,9 @@ class Thread(Base):
     label = models.ForeignKey(
         Label, on_delete=models.CASCADE, related_name="threads"
     )
-    model = models.CharField(max_length=255, default=django_settings.DEFAULT_MODEL)
+    model = models.CharField(
+        max_length=255, default=django_settings.DEFAULT_MODEL
+    )
 
 
 class Message(Base):

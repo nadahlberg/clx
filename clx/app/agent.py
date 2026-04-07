@@ -1,5 +1,10 @@
 from clx.app.models import Message
-from clx.app.tools import AskUser, Search, UpdateLabelInstructions, UpdateProjectInstructions
+from clx.app.tools import (
+    AskUser,
+    Search,
+    UpdateLabelInstructions,
+    UpdateProjectInstructions,
+)
 from clx.llm.agent import Agent
 
 SYSTEM_PROMPT_TEMPLATE = """\
@@ -30,7 +35,12 @@ LABEL_INSTRUCTIONS_BLOCK = """\
 class CLXAgent(Agent):
     """A thread-backed agent that persists messages to the DB."""
 
-    default_tools = [Search, UpdateLabelInstructions, UpdateProjectInstructions, AskUser]
+    default_tools = [
+        Search,
+        UpdateLabelInstructions,
+        UpdateProjectInstructions,
+        AskUser,
+    ]
 
     def __init__(self, thread, **kwargs):
         self.thread = thread
@@ -42,12 +52,16 @@ class CLXAgent(Agent):
         label_instructions = label.instructions.strip()
 
         project_block = (
-            PROJECT_INSTRUCTIONS_BLOCK.format(project_instructions=project_instructions)
+            PROJECT_INSTRUCTIONS_BLOCK.format(
+                project_instructions=project_instructions
+            )
             if project_instructions
             else ""
         )
         label_block = (
-            LABEL_INSTRUCTIONS_BLOCK.format(label_instructions=label_instructions)
+            LABEL_INSTRUCTIONS_BLOCK.format(
+                label_instructions=label_instructions
+            )
             if label_instructions
             else ""
         )
@@ -93,7 +107,9 @@ class CLXAgent(Agent):
                 Message(
                     thread=self.thread,
                     data=msg,
-                    num_tokens=num_tokens if msg.get("role") == "assistant" else 0,
+                    num_tokens=num_tokens
+                    if msg.get("role") == "assistant"
+                    else 0,
                 )
             )
         Message.objects.bulk_create(objects)
