@@ -74,6 +74,9 @@ def _filtered_documents(project, request):
     qs = request.GET.get("q", "").strip()
     if qs:
         documents = documents.query_string(qs)
+    label_id = request.GET.get("label", "").strip()
+    if label_id:
+        documents = documents.for_label(label_id)
     return documents
 
 

@@ -1,5 +1,6 @@
 from clx.app.models import Message
 from clx.app.tools import (
+    AddDocumentsToLabel,
     AskUser,
     Search,
     UpdateLabelInstructions,
@@ -37,6 +38,7 @@ class CLXAgent(Agent):
 
     default_tools = [
         Search,
+        AddDocumentsToLabel,
         UpdateLabelInstructions,
         UpdateProjectInstructions,
         AskUser,

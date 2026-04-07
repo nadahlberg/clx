@@ -187,6 +187,10 @@ class SearchQuerySet(CopyQuerySet):
         """Filter using the shorthand query string syntax."""
         return self.text_query(parse_query(qs))
 
+    def for_label(self, label_id: str) -> SearchQuerySet:
+        """Filter to documents linked to a label via LabelDocument."""
+        return self.filter(label_documents__label_id=label_id)
+
 
 class SearchManager(CopyManager.from_queryset(SearchQuerySet)):
     pass

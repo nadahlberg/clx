@@ -185,6 +185,25 @@ class Thread(Base):
     state = models.JSONField(default=dict, blank=True)
 
 
+class LabelDocument(Base):
+    """Links a document to a label (e.g. as a training example)."""
+
+    label = models.ForeignKey(
+        Label, on_delete=models.CASCADE, related_name="label_documents"
+    )
+    document = models.ForeignKey(
+        "Document", on_delete=models.CASCADE, related_name="label_documents"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["label", "document"],
+                name="labeldocument_label_document_uniq",
+            )
+        ]
+
+
 class Message(Base):
     """Model for messages within a thread."""
 

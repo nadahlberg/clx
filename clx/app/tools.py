@@ -19,27 +19,40 @@ class Search(Tool):
         default=10, description="Number of results to return (max 100)"
     )
 
+    label_only: bool = Field(
+        default=False,
+        description="If true, only search documents already added to the current label.",
+    )
+
     def __call__(self, agent):
         project = agent.thread.label.project
         num_results = min(self.num_results, 100)
         documents = project.documents.order_by("shuffle_key")
         documents = documents.text_query(self.query.model_dump())
-        results = list(documents.values_list("text", flat=True)[:num_results])
+        if self.label_only:
+            documents = documents.for_label(agent.thread.label_id)
+        rows = list(
+            documents.values_list("id", "text")[:num_results]
+        )
 
         # Generate a short search ID and store in agent state.
         search_id = _su.random(length=8)
+        doc_ids = [str(r[0]) for r in rows]
         searches = agent.state.setdefault("searches", {})
         searches[search_id] = {
             "query": self.query.model_dump(),
             "num_results": num_results,
-            "result_count": len(results),
+            "label_only": self.label_only,
+            "result_count": len(rows),
+            "document_ids": doc_ids,
         }
 
-        if not results:
+        if not rows:
             return f"[search:{search_id}] No documents found."
+        lines = [f"[{r[0]}] {r[1]}" for r in rows]
         return (
-            f"[search:{search_id}] {len(results)} results:\n\n"
-            + "\n---\n".join(results)
+            f"[search:{search_id}] {len(rows)} results:\n\n"
+            + "\n---\n".join(lines)
         )
 
 
@@ -91,6 +104,50 @@ class UpdateProjectInstructions(Tool):
             project.instructions = self.content
         project.save(update_fields=["instructions", "updated_at"])
         return f"Project instructions updated ({self.mode})."
+
+
+class AddDocumentsToLabel(Tool):
+    """Add documents to the current label. Provide EITHER a search_id (with optional num_docs to limit) OR a list of document_ids, not both."""
+
+    search_id: str | None = Field(
+        default=None,
+        description="A search ID from a previous Search call. Adds all (or num_docs) documents from that search.",
+    )
+    num_docs: int | None = Field(
+        default=None,
+        description="Max number of documents to add from the search results. Only used with search_id.",
+    )
+    document_ids: list[str] | None = Field(
+        default=None,
+        description="Explicit list of document IDs to add.",
+    )
+
+    def __call__(self, agent):
+        from clx.app.models import LabelDocument
+
+        label = agent.thread.label
+
+        if self.search_id and self.document_ids:
+            return "Error: provide search_id or document_ids, not both."
+        if not self.search_id and not self.document_ids:
+            return "Error: provide either search_id or document_ids."
+
+        if self.search_id:
+            searches = agent.state.get("searches", {})
+            search = searches.get(self.search_id)
+            if not search:
+                return f"Error: search '{self.search_id}' not found in state."
+            doc_ids = search["document_ids"]
+            if self.num_docs is not None:
+                doc_ids = doc_ids[: self.num_docs]
+        else:
+            doc_ids = self.document_ids
+
+        objects = [
+            LabelDocument(label=label, document_id=did) for did in doc_ids
+        ]
+        created = LabelDocument.objects.bulk_create(objects, ignore_conflicts=True)
+        return f"Added {len(created)} document(s) to label '{label.name}' ({len(doc_ids)} requested, duplicates ignored)."
 
 
 class AskUser(Tool):
