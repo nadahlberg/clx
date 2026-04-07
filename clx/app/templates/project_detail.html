@@ -230,13 +230,16 @@
      class="flex-1 min-h-0 flex flex-col">
 
     <!-- Page-level navbar -->
-    <nav class="h-12 shrink-0 border-b border-border flex items-stretch bg-white">
-        <!-- Project name (aligned with left sidebar) -->
-        <div class="w-[280px] shrink-0 flex items-center px-4 border-r border-border">
-            <span class="text-sm font-semibold text-gray-800 truncate" x-text="projectName"></span>
+    <nav class="h-12 shrink-0 border-b border-border flex items-stretch bg-white px-5">
+        <!-- Project name -->
+        <div class="flex items-center shrink-0 mr-6">
+            <a href="/" class="text-slate-400 hover:text-slate-600 transition-colors mr-3" title="All Projects">
+                <i class="fas fa-chevron-left text-[10px]"></i>
+            </a>
+            <span class="text-sm font-semibold text-slate-800 truncate" x-text="projectName"></span>
         </div>
-        <!-- Tabs (centered in remaining space) -->
-        <div class="flex-1 flex items-stretch">
+        <!-- Tabs (centered) -->
+        <div class="flex-1 flex items-stretch justify-center gap-1">
             <template x-for="tab in [
                 {id: 'agent', icon: 'fa-robot', label: 'Agent'},
                 {id: 'search', icon: 'fa-search', label: 'Search'},
@@ -244,20 +247,19 @@
                 {id: 'settings', icon: 'fa-gear', label: 'Settings'}
             ]" :key="tab.id">
                 <button @click="activeTab = tab.id"
-                        class="px-5 text-xs font-medium flex items-center gap-1.5 border-b-2 transition-colors relative"
+                        class="px-4 text-xs font-medium flex items-center gap-1.5 border-b-2 transition-colors"
                         :class="activeTab === tab.id
                             ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'">
                     <i class="fas" :class="tab.icon"></i>
                     <span x-text="tab.label"></span>
                 </button>
             </template>
         </div>
-        <!-- Back to projects (aligned with right sidebar) -->
-        <div class="w-[340px] shrink-0 flex items-center justify-end px-4 border-l border-border">
-            <a href="/" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors">
-                <i class="fas fa-chevron-left text-[10px]"></i> Projects
-            </a>
+        <!-- Spacer to balance the left side -->
+        <div class="shrink-0 mr-6 invisible flex items-center">
+            <i class="fas fa-chevron-left text-[10px] mr-3"></i>
+            <span class="text-sm font-semibold" x-text="projectName"></span>
         </div>
     </nav>
 
