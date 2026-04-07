@@ -2,13 +2,16 @@ from typing import Literal
 
 from pydantic import Field
 
+from clx.app.search import And, Contains, Not, Or, Query, StartsWith, build_q
 from clx.llm.agent import Tool
 
 
 class Search(Tool):
-    """Search documents in the project. Uses query string syntax: comma for AND, pipe for OR, tilde for NOT, caret for STARTSWITH, parentheses for grouping. AND binds lower than OR, so `A, B | C` means A AND (B OR C). Plain text does a contains search."""
+    """Search documents in the project using a structured query. Build queries using Contains, StartsWith, Not, Or, and And nodes."""
 
-    query: str = Field(description="Query string to search for")
+    query: Query = Field(
+        description="A structured query object. Use {type:'contains', value:'...'} for text search, {type:'startsWith', value:'...'} for prefix search, {type:'not', query:...} for negation, {type:'or', queries:[...]} for OR, {type:'and', queries:[...]} for AND."
+    )
     num_results: int = Field(
         default=10, description="Number of results to return (max 100)"
     )
@@ -17,8 +20,7 @@ class Search(Tool):
         project = agent.thread.label.project
         num_results = min(self.num_results, 100)
         documents = project.documents.order_by("shuffle_key")
-        if self.query.strip():
-            documents = documents.query_string(self.query)
+        documents = documents.text_query(self.query.model_dump())
         results = list(documents.values_list("text", flat=True)[:num_results])
         if not results:
             return "No documents found."
