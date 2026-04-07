@@ -227,16 +227,16 @@
          }
      }"
      x-init="fetchDocs(); fetchLabels()"
-     class="flex-1 min-h-0 flex flex-col">
+     class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
-    <nav class="h-12 shrink-0 border-b border-border flex items-stretch bg-white px-5">
+    <nav class="h-12 shrink-0 border-b border-slate-800 flex items-stretch px-5">
         <!-- Project name -->
         <div class="flex items-center shrink-0 mr-6">
-            <a href="/" class="text-slate-400 hover:text-slate-600 transition-colors mr-3" title="All Projects">
+            <a href="/" class="text-slate-500 hover:text-slate-300 transition-colors mr-3" title="All Projects">
                 <i class="fas fa-chevron-left text-[10px]"></i>
             </a>
-            <span class="text-sm font-semibold text-slate-800 truncate" x-text="projectName"></span>
+            <span class="text-sm font-semibold text-slate-200 truncate" x-text="projectName"></span>
         </div>
         <!-- Tabs (centered) -->
         <div class="flex-1 flex items-stretch justify-center gap-1">
@@ -249,8 +249,8 @@
                 <button @click="activeTab = tab.id"
                         class="px-4 text-xs font-medium flex items-center gap-1.5 border-b-2 transition-colors"
                         :class="activeTab === tab.id
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'">
+                            ? 'border-indigo-400 text-indigo-400'
+                            : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600'">
                     <i class="fas" :class="tab.icon"></i>
                     <span x-text="tab.label"></span>
                 </button>
@@ -266,61 +266,61 @@
     <!-- Three-column layout -->
     <div class="grid grid-cols-[280px_1fr_340px] flex-1 min-h-0">
         <!-- Left sidebar -->
-        <aside class="border-r border-border flex flex-col min-h-0">
+        <aside class="border-r border-slate-800 flex flex-col min-h-0">
 
             <!-- Agent tab: Thread history -->
-            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel">
+            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel scrollable-dark">
                 <!-- Thread list -->
                 <template x-for="thread in threads" :key="thread.id">
                     <div @click="selectThread(thread)"
-                         class="w-full px-4 py-3 text-left border-b border-border hover:bg-blue-50 transition-colors cursor-pointer flex items-center gap-2"
-                         :class="activeThread && activeThread.id === thread.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''">
+                         class="w-full px-4 py-3 text-left border-b border-slate-800/60 hover:bg-slate-800/50 transition-colors cursor-pointer flex items-center gap-2"
+                         :class="activeThread && activeThread.id === thread.id ? 'bg-slate-800/50 border-l-2 border-l-indigo-500' : ''">
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs text-gray-700 truncate" x-text="thread.preview || 'New chat'"></p>
-                            <p class="text-xs text-gray-400 mt-0.5" x-text="thread.model"></p>
+                            <p class="text-xs text-slate-300 truncate" x-text="thread.preview || 'New chat'"></p>
+                            <p class="text-xs text-slate-500 mt-0.5" x-text="thread.model"></p>
                         </div>
                         <button @click.stop="threadToDelete = thread"
-                                class="shrink-0 text-gray-300 hover:text-red-500 transition-colors">
+                                class="shrink-0 text-slate-600 hover:text-red-400 transition-colors">
                             <i class="fas fa-xmark text-xs"></i>
                         </button>
                     </div>
                 </template>
                 <div x-show="threads.length === 0" class="px-4 py-6 text-center">
-                    <span class="text-xs text-gray-400">No threads yet</span>
+                    <span class="text-xs text-slate-600">No threads yet</span>
                 </div>
             </div>
 
             <!-- Other tabs: Filters panel -->
-            <div x-show="activeTab !== 'agent'" x-cloak class="p-4 scrollable-panel">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Filters</h3>
+            <div x-show="activeTab !== 'agent'" x-cloak class="p-4 scrollable-panel scrollable-dark">
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Filters</h3>
                 <div class="flex items-center justify-between mb-1">
-                    <label class="text-xs font-medium text-gray-500">Query</label>
+                    <label class="text-xs font-medium text-slate-500">Query</label>
                     <button @click="showQueryHelp = !showQueryHelp"
-                            class="text-gray-400 hover:text-gray-600 transition-colors"
+                            class="text-slate-500 hover:text-slate-300 transition-colors"
                             title="Query syntax help">
                         <i class="fas fa-circle-info text-xs"></i>
                     </button>
                 </div>
                 <div x-show="showQueryHelp" x-cloak
-                     class="mb-2 p-2.5 bg-gray-50 border border-border rounded-md text-xs text-gray-600 leading-relaxed">
-                    <p class="font-medium text-gray-700 mb-1">Query syntax</p>
+                     class="mb-2 p-2.5 bg-slate-800 border border-slate-700 rounded-md text-xs text-slate-400 leading-relaxed">
+                    <p class="font-medium text-slate-300 mb-1">Query syntax</p>
                     <div class="space-y-0.5">
-                        <p><code class="text-gray-800">,</code> AND</p>
-                        <p><code class="text-gray-800">|</code> OR</p>
-                        <p><code class="text-gray-800">~</code> NOT</p>
-                        <p><code class="text-gray-800">^</code> STARTS WITH</p>
-                        <p><code class="text-gray-800">( )</code> grouping</p>
+                        <p><code class="text-slate-200">,</code> AND</p>
+                        <p><code class="text-slate-200">|</code> OR</p>
+                        <p><code class="text-slate-200">~</code> NOT</p>
+                        <p><code class="text-slate-200">^</code> STARTS WITH</p>
+                        <p><code class="text-slate-200">( )</code> grouping</p>
                     </div>
-                    <p class="mt-1.5 text-gray-500">Example: <code class="text-gray-700">foo, bar | baz</code> matches <em>foo</em> AND (<em>bar</em> OR <em>baz</em>)</p>
+                    <p class="mt-1.5 text-slate-500">Example: <code class="text-slate-300">foo, bar | baz</code> matches <em>foo</em> AND (<em>bar</em> OR <em>baz</em>)</p>
                 </div>
                 <textarea x-model="queryString"
                           @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); search(); }"
                           @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
                           rows="1"
                           placeholder="e.g. foo, bar | baz"
-                          class="w-full border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-3 resize-none overflow-hidden"></textarea>
+                          class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 mb-3 resize-none overflow-hidden placeholder:text-slate-600"></textarea>
                 <button @click="search()"
-                        class="w-full px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                        class="w-full px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
                     <i class="fas fa-search mr-1"></i> Search
                 </button>
             </div>
@@ -329,18 +329,18 @@
         <!-- Center column -->
         <div class="flex flex-col min-h-0">
             <!-- Tab: Agent (Chat) -->
-            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-surface relative">
+            <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-slate-900 relative">
                 <!-- New thread button (floating) -->
                 <button x-show="activeThread"
                         @click="activeThread = null; chatMessages = []; chatSending = false"
-                        class="absolute top-3 right-3 z-10 px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors shadow-md"
+                        class="absolute top-3 right-3 z-10 px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700"
                         title="New thread">
                     <i class="fas fa-plus text-[10px] mr-1"></i> New thread
                 </button>
                 <!-- Chat messages -->
-                <div id="chat-scroll" class="flex-1 overflow-y-auto px-4 pb-4 pt-12">
+                <div id="chat-scroll" class="flex-1 overflow-y-auto px-4 pb-4 pt-12 scrollable-panel scrollable-dark">
                     <div x-show="chatMessages.length === 0 && !chatSending" class="flex items-center justify-center h-full">
-                        <span class="text-sm text-gray-400">Start a conversation</span>
+                        <span class="text-sm text-slate-600">Start a conversation</span>
                     </div>
                     <div class="space-y-4">
                         <template x-for="(msg, i) in chatMessages" :key="i">
@@ -348,7 +348,7 @@
                                 <!-- User message -->
                                 <template x-if="msg.role === 'user'">
                                     <div class="flex justify-end">
-                                        <div class="max-w-[80%] rounded-lg px-4 py-2.5 bg-blue-600 text-white">
+                                        <div class="max-w-[80%] rounded-lg px-4 py-2.5 bg-indigo-600 text-white">
                                             <div class="text-sm prose-chat prose-chat-white" x-html="renderMarkdown(msg.content)"></div>
                                         </div>
                                     </div>
@@ -362,19 +362,19 @@
                                             <template x-if="msg.reasoning_content">
                                                 <div class="mb-1.5" x-data="{ expanded: false }">
                                                     <button @click="expanded = !expanded"
-                                                            class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-1">
+                                                            class="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors mb-1">
                                                         <i class="fas fa-lightbulb text-[10px]"></i>
                                                         <span>Thinking</span>
                                                         <i class="fas text-[10px]" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                                                     </button>
                                                     <div x-show="expanded" x-cloak
-                                                         class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
-                                                        <p class="text-xs text-amber-900 whitespace-pre-wrap" x-text="msg.reasoning_content"></p>
+                                                         class="bg-amber-950/30 border border-amber-800/40 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
+                                                        <p class="text-xs text-amber-200/80 whitespace-pre-wrap" x-text="msg.reasoning_content"></p>
                                                     </div>
                                                 </div>
                                             </template>
-                                            <div class="rounded-lg px-4 py-2.5 bg-gray-100 text-gray-800">
-                                                <div class="text-sm prose-chat" x-html="renderMarkdown(msg.content)"></div>
+                                            <div class="rounded-lg px-4 py-2.5 bg-slate-800 text-slate-200">
+                                                <div class="text-sm prose-chat prose-chat-dark" x-html="renderMarkdown(msg.content)"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -388,14 +388,14 @@
                                             <template x-if="msg.reasoning_content">
                                                 <div x-data="{ expanded: false }">
                                                     <button @click="expanded = !expanded"
-                                                            class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-1">
+                                                            class="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors mb-1">
                                                         <i class="fas fa-lightbulb text-[10px]"></i>
                                                         <span>Thinking</span>
                                                         <i class="fas text-[10px]" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                                                     </button>
                                                     <div x-show="expanded" x-cloak
-                                                         class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
-                                                        <p class="text-xs text-amber-900 whitespace-pre-wrap" x-text="msg.reasoning_content"></p>
+                                                         class="bg-amber-950/30 border border-amber-800/40 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
+                                                        <p class="text-xs text-amber-200/80 whitespace-pre-wrap" x-text="msg.reasoning_content"></p>
                                                     </div>
                                                 </div>
                                             </template>
@@ -403,17 +403,17 @@
                                                 <div>
                                                     <!-- AskUser tool call -->
                                                     <template x-if="tc.function.name === 'AskUser'">
-                                                        <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                                                            <p class="text-sm font-medium text-gray-800 mb-2" x-text="JSON.parse(tc.function.arguments).question"></p>
+                                                        <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-lg px-4 py-3">
+                                                            <p class="text-sm font-medium text-slate-200 mb-2" x-text="JSON.parse(tc.function.arguments).question"></p>
                                                             <div class="flex flex-wrap gap-1.5">
                                                                 <template x-for="opt in JSON.parse(tc.function.arguments).options" :key="opt">
                                                                     <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + opt; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } })"
-                                                                            class="px-3 py-1.5 text-xs rounded-md border border-blue-300 bg-white text-blue-700 hover:bg-blue-100 transition-colors">
+                                                                            class="px-3 py-1.5 text-xs rounded-md border border-indigo-700/50 bg-indigo-900/30 text-indigo-300 hover:bg-indigo-800/40 transition-colors">
                                                                         <span x-text="opt"></span>
                                                                     </button>
                                                                 </template>
                                                                 <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + ''; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.focus(); } })"
-                                                                        class="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-100 transition-colors">
+                                                                        class="px-3 py-1.5 text-xs rounded-md border border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 transition-colors">
                                                                     <i class="fas fa-pen text-[10px] mr-1"></i> Type something else
                                                                 </button>
                                                             </div>
@@ -421,10 +421,10 @@
                                                     </template>
                                                     <!-- Other tool calls -->
                                                     <template x-if="tc.function.name !== 'AskUser'">
-                                                        <div class="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-border rounded-md px-3 py-2">
-                                                            <i class="fas fa-wrench text-gray-400"></i>
-                                                            <span class="font-medium text-gray-600" x-text="tc.function.name"></span>
-                                                            <span class="text-gray-400 truncate max-w-[200px]" x-text="tc.function.arguments"></span>
+                                                        <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 border border-slate-700/50 rounded-md px-3 py-2">
+                                                            <i class="fas fa-wrench text-slate-500"></i>
+                                                            <span class="font-medium text-slate-300" x-text="tc.function.name"></span>
+                                                            <span class="text-slate-500 truncate max-w-[200px]" x-text="tc.function.arguments"></span>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -436,51 +436,51 @@
                                 <!-- Tool response (hide AskUser responses) -->
                                 <template x-if="msg.role === 'tool' && msg.name !== 'AskUser'">
                                     <div class="flex justify-start">
-                                        <div class="max-w-[80%] bg-gray-50 border border-border rounded-md px-3 py-2">
+                                        <div class="max-w-[80%] bg-slate-800/50 border border-slate-700/50 rounded-md px-3 py-2">
                                             <div class="flex items-center gap-1.5 mb-1">
-                                                <i class="fas fa-reply text-gray-400 text-[10px]"></i>
-                                                <span class="text-xs font-medium text-gray-500" x-text="msg.name"></span>
+                                                <i class="fas fa-reply text-slate-500 text-[10px]"></i>
+                                                <span class="text-xs font-medium text-slate-400" x-text="msg.name"></span>
                                             </div>
-                                            <p class="text-xs text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto" x-text="msg.content"></p>
+                                            <p class="text-xs text-slate-400 whitespace-pre-wrap max-h-32 overflow-y-auto" x-text="msg.content"></p>
                                         </div>
                                     </div>
                                 </template>
                             </div>
                         </template>
                         <div x-show="chatSending" class="flex justify-start">
-                            <div class="bg-gray-100 rounded-lg px-4 py-2.5">
-                                <span class="text-sm text-gray-500"><i class="fas fa-spinner fa-spin mr-1"></i> Thinking...</span>
+                            <div class="bg-slate-800 rounded-lg px-4 py-2.5">
+                                <span class="text-sm text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i> Thinking...</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 <!-- Chat input -->
                 <div class="shrink-0 px-4 pb-4 pt-2">
-                    <div class="border border-border rounded-lg bg-surface focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
+                    <div class="border border-slate-700 rounded-lg bg-slate-800 focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500">
                         <textarea id="chat-input"
                                   x-model="chatInput"
                                   @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
                                   @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 160) + 'px'"
                                   rows="1"
                                   placeholder="Send a message..."
-                                  class="w-full px-3 pt-2.5 pb-1 text-sm resize-none overflow-hidden focus:outline-none bg-transparent"></textarea>
+                                  class="w-full px-3 pt-2.5 pb-1 text-sm text-slate-200 resize-none overflow-hidden focus:outline-none bg-transparent placeholder:text-slate-600"></textarea>
                         <div class="flex items-center justify-between px-2 pb-2">
                             <!-- Model selector -->
                             <div class="relative">
                                 <button @click="modelDropdownOpen = !modelDropdownOpen"
-                                        class="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 rounded transition-colors">
+                                        class="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-300 rounded transition-colors">
                                     <i class="fas fa-microchip"></i>
                                     <span x-text="selectedModel.split('/').pop()"></span>
                                     <i class="fas fa-chevron-down text-[10px]"></i>
                                 </button>
                                 <div x-show="modelDropdownOpen" x-cloak
                                      @click.outside="modelDropdownOpen = false"
-                                     class="absolute bottom-full left-0 mb-1 bg-white border border-border rounded-lg shadow-lg z-20 min-w-[220px] max-h-48 overflow-y-auto">
+                                     class="absolute bottom-full left-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-20 min-w-[220px] max-h-48 overflow-y-auto">
                                     <template x-for="mid in modelIds" :key="mid">
                                         <button @click="selectedModel = mid; modelDropdownOpen = false"
-                                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors flex items-center gap-2"
-                                                :class="selectedModel === mid ? 'text-blue-600 font-medium' : 'text-gray-700'">
-                                            <i class="fas fa-check text-[10px]" :class="selectedModel === mid ? 'text-blue-600' : 'invisible'"></i>
+                                                class="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                                :class="selectedModel === mid ? 'text-indigo-400 font-medium' : 'text-slate-300'">
+                                            <i class="fas fa-check text-[10px]" :class="selectedModel === mid ? 'text-indigo-400' : 'invisible'"></i>
                                             <span x-text="mid"></span>
                                         </button>
                                     </template>
@@ -490,7 +490,7 @@
                             <button @click="sendMessage()"
                                     :disabled="!chatInput.trim() || chatSending"
                                     class="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
-                                    :class="chatInput.trim() && !chatSending ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed'">
+                                    :class="chatInput.trim() && !chatSending ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-slate-700 text-slate-500 cursor-not-allowed'">
                                 <i class="fas fa-arrow-up text-xs"></i>
                             </button>
                         </div>
@@ -499,19 +499,19 @@
             </div>
 
             <!-- Tab: Search -->
-            <div x-show="activeTab === 'search'" x-cloak class="flex-1 flex flex-col min-h-0 bg-surface">
+            <div x-show="activeTab === 'search'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900">
                 <!-- Count sub-nav -->
-                <div class="h-10 border-b border-border flex items-center justify-between px-4 shrink-0 bg-surface">
+                <div class="h-10 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
                     <div>
-                        <span x-show="totalCount !== null" class="text-xs text-gray-600">
+                        <span x-show="totalCount !== null" class="text-xs text-slate-400">
                             <span x-text="totalCount.toLocaleString()"></span> document<span x-show="totalCount !== 1">s</span>
                         </span>
                         <button x-show="totalCount === null && !countLoading"
                                 @click="fetchCount()"
-                                class="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                                class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
                             <i class="fas fa-calculator mr-1"></i> Get count
                         </button>
-                        <span x-show="countLoading" class="text-xs text-gray-500">
+                        <span x-show="countLoading" class="text-xs text-slate-500">
                             <i class="fas fa-spinner fa-spin mr-1"></i> Counting...
                         </span>
                     </div>
@@ -519,75 +519,75 @@
                         <button @click="page--; fetchDocs()"
                                 :disabled="page <= 1"
                                 class="text-xs transition-colors"
-                                :class="page <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'">
+                                :class="page <= 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <span class="text-xs text-gray-600" x-text="page"></span>
+                        <span class="text-xs text-slate-400" x-text="page"></span>
                         <button @click="page++; fetchDocs()"
                                 :disabled="!hasNext"
                                 class="text-xs transition-colors"
-                                :class="!hasNext ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'">
+                                :class="!hasNext ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
                 </div>
                 <!-- Scrollable document area -->
-                <div class="flex-1 overflow-y-auto p-4">
+                <div class="flex-1 overflow-y-auto p-4 scrollable-panel scrollable-dark">
                     <div x-show="loading" class="flex items-center justify-center py-12">
-                        <span class="text-sm text-gray-500">Loading...</span>
+                        <span class="text-sm text-slate-500">Loading...</span>
                     </div>
                     <div x-show="!loading" class="space-y-3">
                         <template x-for="doc in documents" :key="doc.id">
-                            <div class="border border-border rounded-lg px-4 py-3 bg-surface hover:border-gray-300 transition-colors cursor-default">
-                                <p class="text-sm text-gray-700" x-text="doc.text"></p>
+                            <div class="border border-slate-800 rounded-lg px-4 py-3 bg-slate-900 hover:border-slate-700 transition-colors cursor-default">
+                                <p class="text-sm text-slate-300" x-text="doc.text"></p>
                             </div>
                         </template>
                         <div x-show="documents.length === 0" class="flex items-center justify-center py-12">
-                            <span class="text-sm text-gray-500">No documents yet.</span>
+                            <span class="text-sm text-slate-500">No documents yet.</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Tab: Labels -->
-            <div x-show="activeTab === 'labels'" x-cloak class="flex-1 overflow-y-auto p-4 bg-surface">
+            <div x-show="activeTab === 'labels'" x-cloak class="flex-1 overflow-y-auto p-4 bg-slate-900 scrollable-panel scrollable-dark">
                 <div class="space-y-3">
                     <template x-for="label in labels" :key="label.id">
-                        <div class="border border-border rounded-lg px-4 py-3 bg-surface hover:border-gray-300 transition-colors cursor-default flex items-center gap-2">
-                            <i class="fas fa-tag text-gray-400 text-xs"></i>
-                            <span class="text-sm text-gray-700" x-text="label.name"></span>
+                        <div class="border border-slate-800 rounded-lg px-4 py-3 bg-slate-900 hover:border-slate-700 transition-colors cursor-default flex items-center gap-2">
+                            <i class="fas fa-tag text-slate-500 text-xs"></i>
+                            <span class="text-sm text-slate-300" x-text="label.name"></span>
                         </div>
                     </template>
                     <div x-show="labels.length === 0" class="flex items-center justify-center py-12">
-                        <span class="text-sm text-gray-500">No labels yet.</span>
+                        <span class="text-sm text-slate-500">No labels yet.</span>
                     </div>
                 </div>
             </div>
 
             <!-- Tab: Settings -->
-            <div x-show="activeTab === 'settings'" x-cloak class="flex-1 flex flex-col min-h-0 bg-surface">
+            <div x-show="activeTab === 'settings'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900">
                 <div class="shrink-0 px-4 py-3 flex items-center justify-between">
-                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Project Settings</h3>
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Settings</h3>
                     <button @click="saveProject()"
-                            class="px-4 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                            class="px-4 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
                         Save
                     </button>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 scrollable-panel scrollable-dark">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
                         <input type="text"
                                x-model="projectName"
-                               class="w-full border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                               class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                     <div>
                         <div class="flex items-center justify-between mb-1">
-                            <label class="text-sm font-medium text-gray-700">Instructions</label>
+                            <label class="text-sm font-medium text-slate-300">Instructions</label>
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <span class="text-xs text-gray-500">Allow AI Changes</span>
+                                <span class="text-xs text-slate-500">Allow AI Changes</span>
                                 <button @click="allowAIChanges = !allowAIChanges"
                                         class="relative w-8 h-[18px] rounded-full transition-colors"
-                                        :class="allowAIChanges ? 'bg-blue-600' : 'bg-gray-300'">
+                                        :class="allowAIChanges ? 'bg-indigo-600' : 'bg-slate-600'">
                                     <span class="absolute top-[2px] left-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform"
                                           :class="allowAIChanges ? 'translate-x-[14px]' : ''"></span>
                                 </button>
@@ -596,27 +596,27 @@
                         <textarea x-model="projectInstructions"
                                   rows="6"
                                   placeholder="Project-level instructions for the agent..."
-                                  class="w-full border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
+                                  class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y placeholder:text-slate-600"></textarea>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Right sidebar: Label panel -->
-        <aside class="border-l border-border flex flex-col min-h-0">
-            <div class="h-12 shrink-0 border-b border-border flex items-center px-4 gap-2 relative">
+        <aside class="border-l border-slate-800 flex flex-col min-h-0">
+            <div class="h-12 shrink-0 border-b border-slate-800 flex items-center px-4 gap-2 relative">
                 <button @click="labelDropdownOpen = !labelDropdownOpen"
-                        class="flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-gray-900 transition-colors min-w-0 flex-1">
-                    <i class="fas fa-chevron-down text-gray-400 text-xs shrink-0"></i>
+                        class="flex items-center gap-2 text-sm font-semibold text-slate-200 hover:text-white transition-colors min-w-0 flex-1">
+                    <i class="fas fa-chevron-down text-slate-500 text-xs shrink-0"></i>
                     <span x-text="activeLabel ? activeLabel.name : 'No label'" class="truncate"></span>
                 </button>
                 <div class="flex items-center gap-1 shrink-0">
                     <button @click="newLabelName = ''; showCreateLabelModal = true"
-                            class="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="New label">
+                            class="p-1.5 text-slate-500 hover:text-slate-300 transition-colors" title="New label">
                         <i class="fas fa-plus text-xs"></i>
                     </button>
                     <button @click="editLabelName = activeLabel ? activeLabel.name : ''; showEditLabelModal = true"
-                            class="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="Edit label">
+                            class="p-1.5 text-slate-500 hover:text-slate-300 transition-colors" title="Edit label">
                         <i class="fas fa-gear text-xs"></i>
                     </button>
                 </div>
@@ -624,45 +624,45 @@
                 <div x-show="labelDropdownOpen"
                      x-cloak
                      @click.outside="labelDropdownOpen = false"
-                     class="absolute top-full left-0 right-0 bg-white border border-border rounded-b-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                     class="absolute top-full left-0 right-0 bg-slate-800 border border-slate-700 rounded-b-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                     <template x-for="label in labels" :key="label.id">
                         <button @click="switchLabel(label)"
-                                class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2"
-                                :class="activeLabel && activeLabel.id === label.id ? 'text-blue-600 font-medium' : 'text-gray-700'">
-                            <i class="fas fa-check text-xs" :class="activeLabel && activeLabel.id === label.id ? 'text-blue-600' : 'invisible'"></i>
+                                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                :class="activeLabel && activeLabel.id === label.id ? 'text-indigo-400 font-medium' : 'text-slate-300'">
+                            <i class="fas fa-check text-xs" :class="activeLabel && activeLabel.id === label.id ? 'text-indigo-400' : 'invisible'"></i>
                             <span x-text="label.name" class="truncate"></span>
                         </button>
                     </template>
                 </div>
             </div>
-            <div class="p-4 scrollable-panel">
-                <p class="text-sm text-gray-500">Select a document to view details.</p>
+            <div class="p-4 scrollable-panel scrollable-dark">
+                <p class="text-sm text-slate-500">Select a document to view details.</p>
             </div>
         </aside>
     </div>
 
     <!-- Create Label Modal -->
     <div x-show="showCreateLabelModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
          @keydown.escape.window="showCreateLabelModal = false">
-        <div class="bg-white rounded-xl border border-border p-6 w-full max-w-sm"
+        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-modal p-6 w-full max-w-sm"
              @click.outside="showCreateLabelModal = false">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">New Label</h2>
+            <h2 class="text-lg font-semibold text-slate-200 mb-4">New Label</h2>
             <form @submit.prevent="createLabel()">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Label Name</label>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Label Name</label>
                 <input type="text"
                        x-model="newLabelName"
                        required
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                       class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 mb-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-slate-500"
                        placeholder="Enter label name">
                 <div class="flex justify-end gap-3">
                     <button type="button"
                             @click="showCreateLabelModal = false"
-                            class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
+                            class="px-4 py-2 text-sm text-slate-400 hover:text-slate-200">
                         Cancel
                     </button>
                     <button type="submit"
-                            class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500">
                         Create
                     </button>
                 </div>
@@ -672,26 +672,26 @@
 
     <!-- Edit Label Modal -->
     <div x-show="showEditLabelModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
          @keydown.escape.window="showEditLabelModal = false">
-        <div class="bg-white rounded-xl border border-border p-6 w-full max-w-sm"
+        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-modal p-6 w-full max-w-sm"
              @click.outside="showEditLabelModal = false">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Edit Label</h2>
+            <h2 class="text-lg font-semibold text-slate-200 mb-4">Edit Label</h2>
             <form @submit.prevent="renameLabel()">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Label Name</label>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Label Name</label>
                 <input type="text"
                        x-model="editLabelName"
                        required
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                       class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 mb-4 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-slate-500"
                        placeholder="Enter label name">
                 <div class="flex justify-end gap-3">
                     <button type="button"
                             @click="showEditLabelModal = false"
-                            class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
+                            class="px-4 py-2 text-sm text-slate-400 hover:text-slate-200">
                         Cancel
                     </button>
                     <button type="submit"
-                            class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500">
                         Save
                     </button>
                 </div>
@@ -701,19 +701,19 @@
 
     <!-- Delete Thread Modal -->
     <div x-show="threadToDelete" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
          @keydown.escape.window="threadToDelete = null">
-        <div class="bg-white rounded-xl border border-border p-6 w-full max-w-sm"
+        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-modal p-6 w-full max-w-sm"
              @click.outside="threadToDelete = null">
-            <h2 class="text-lg font-semibold text-gray-800 mb-2">Delete Thread</h2>
-            <p class="text-sm text-gray-500 mb-4">Are you sure you want to delete this thread? This cannot be undone.</p>
+            <h2 class="text-lg font-semibold text-slate-200 mb-2">Delete Thread</h2>
+            <p class="text-sm text-slate-400 mb-4">Are you sure you want to delete this thread? This cannot be undone.</p>
             <div class="flex justify-end gap-3">
                 <button @click="threadToDelete = null"
-                        class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
+                        class="px-4 py-2 text-sm text-slate-400 hover:text-slate-200">
                     Cancel
                 </button>
                 <button @click="deleteThread()"
-                        class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">
+                        class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-500">
                     Delete
                 </button>
             </div>
