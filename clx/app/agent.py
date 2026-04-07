@@ -9,7 +9,7 @@ from clx.app.tools import (
     UpdateLabelInstructions,
     UpdateProjectInstructions,
 )
-from clx.llm.agent import Agent
+from clx.llm.agent import Agent, message_tokens
 
 SYSTEM_PROMPT_TEMPLATE = """\
 You are an assistant for the project "{project_name}".
@@ -104,21 +104,14 @@ class CLXAgent(Agent):
         new_messages = self.messages[self._persisted_count :]
         if not new_messages:
             return
-        objects = []
-        for msg in new_messages:
-            usage = {}
-            if self.r and self.r.usage:
-                usage = dict(self.r.usage)
-            num_tokens = usage.get("total_tokens", 0)
-            objects.append(
-                Message(
-                    thread=self.thread,
-                    data=msg,
-                    num_tokens=num_tokens
-                    if msg.get("role") == "assistant"
-                    else 0,
-                )
+        objects = [
+            Message(
+                thread=self.thread,
+                data=msg,
+                num_tokens=message_tokens(msg),
             )
+            for msg in new_messages
+        ]
         Message.objects.bulk_create(objects)
         self._persisted_count = len(self.messages)
 

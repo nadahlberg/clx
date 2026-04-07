@@ -3,9 +3,17 @@ from typing import Any, ClassVar
 
 import litellm
 import simplejson as json
+import tiktoken
 from pydantic import BaseModel, Field
 
 litellm.drop_params = True
+
+_encoding = tiktoken.get_encoding("cl100k_base")
+
+
+def count_tokens(text: str) -> int:
+    """Count tokens in text using cl100k_base encoding."""
+    return len(_encoding.encode(text))
 
 logger = logging.getLogger("clx.llm")
 logger.setLevel(logging.DEBUG)
@@ -210,4 +218,17 @@ class Agent:
         pass
 
 
-__all__ = ["Agent", "Tool", "Field"]
+def message_tokens(msg: dict) -> int:
+    """Count the token length of a message's content."""
+    tokens = 0
+    content = msg.get("content")
+    if content:
+        tokens += count_tokens(content)
+    for tc in msg.get("tool_calls") or []:
+        fn = tc.get("function", {})
+        tokens += count_tokens(fn.get("name", ""))
+        tokens += count_tokens(fn.get("arguments", ""))
+    return tokens
+
+
+__all__ = ["Agent", "Tool", "Field", "count_tokens", "message_tokens"]
