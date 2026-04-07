@@ -216,11 +216,13 @@ class SearchQuerySet(CopyQuerySet):
     ) -> SearchQuerySet:
         """Filter documents by annotation value for a label+source.
 
-        value: 'yes', 'no', 'skip', or 'none' (no annotation exists).
+        value: 'yes', 'no', 'skip', 'none' (unannotated), or 'any' (has annotation).
         """
         qs = self.training_examples(label_id).with_annotation(label_id, source)
         if value == "none":
             return qs.filter(annotation_value__isnull=True)
+        if value == "any":
+            return qs.filter(annotation_value__isnull=False)
         return qs.filter(annotation_value=value)
 
 

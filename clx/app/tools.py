@@ -25,7 +25,7 @@ class Search(Tool):
     )
     annotation: str | None = Field(
         default=None,
-        description="Filter by annotation value: 'yes', 'no', 'skip', or 'none' (unannotated). Implies label_only.",
+        description="Filter by annotation value: 'yes', 'no', 'skip', 'none' (unannotated), or 'any' (has any annotation). Implies label_only.",
     )
     count_only: bool = Field(
         default=False,
