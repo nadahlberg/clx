@@ -203,6 +203,9 @@
              this.labelDropdownOpen = false;
              if (this.activeLabel && this.activeLabel.id === label.id) return;
              this.activeLabel = label;
+             this.activeThread = null;
+             this.chatMessages = [];
+             this.chatInput = '';
              fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
              this.fetchThreads();
          },
