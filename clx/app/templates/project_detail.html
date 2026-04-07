@@ -499,7 +499,7 @@
                             <textarea id="chat-input"
                                       x-model="chatInput"
                                       @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
-                                      @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                      @input="const wrap = $el.parentElement; const st = wrap.scrollTop; $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'; wrap.scrollTop = st"
                                       rows="1"
                                       placeholder="Send a message..."
                                       class="w-full px-3 pt-2.5 pb-1 text-sm text-slate-200 resize-none overflow-hidden focus:outline-none bg-transparent placeholder:text-slate-600"></textarea>
