@@ -615,40 +615,41 @@
             </div>
 
             <!-- Tab: Search -->
-            <div x-show="activeTab === 'search'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900">
-                <!-- Count sub-nav -->
-                <div class="h-10 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
-                    <div>
-                        <span x-show="totalCount !== null" class="text-xs text-slate-400">
-                            <span x-text="totalCount.toLocaleString()"></span> document<span x-show="totalCount !== 1">s</span>
-                        </span>
-                        <button x-show="totalCount === null && !countLoading"
-                                @click="fetchCount()"
-                                class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
-                            <i class="fas fa-calculator mr-1"></i> Get count
-                        </button>
-                        <span x-show="countLoading" class="text-xs text-slate-500">
-                            <i class="fas fa-spinner fa-spin mr-1"></i> Counting...
-                        </span>
+            <div x-show="activeTab === 'search'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900 relative">
+                <!-- Count (floating top-left) -->
+                <div class="absolute top-3 left-3 z-10">
+                    <div x-show="totalCount !== null"
+                         class="px-2.5 py-1 text-[11px] rounded-md bg-slate-800/90 text-slate-500 shadow-md border border-slate-700">
+                        <span x-text="totalCount.toLocaleString()"></span> document<span x-show="totalCount !== 1">s</span>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                        <button @click="page--; fetchDocs()"
-                                :disabled="page <= 1"
-                                class="text-xs transition-colors"
-                                :class="page <= 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <span class="text-xs text-slate-400" x-text="page"></span>
-                        <button @click="page++; fetchDocs()"
-                                :disabled="!hasNext"
-                                class="text-xs transition-colors"
-                                :class="!hasNext ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
+                    <button x-show="totalCount === null && !countLoading"
+                            @click="fetchCount()"
+                            class="px-2.5 py-1 text-[11px] rounded-md bg-slate-800/90 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700">
+                        <i class="fas fa-calculator mr-1"></i> Get count
+                    </button>
+                    <span x-show="countLoading"
+                          class="px-2.5 py-1 text-[11px] rounded-md bg-slate-800/90 text-slate-500 shadow-md border border-slate-700 inline-block">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Counting...
+                    </span>
+                </div>
+                <!-- Pagination (floating top-right) -->
+                <div class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md bg-slate-800/90 shadow-md border border-slate-700 flex items-center gap-1.5">
+                    <button @click="page--; fetchDocs()"
+                            :disabled="page <= 1"
+                            class="text-xs transition-colors"
+                            :class="page <= 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="text-[11px] text-slate-500" x-text="page"></span>
+                    <button @click="page++; fetchDocs()"
+                            :disabled="!hasNext"
+                            class="text-xs transition-colors"
+                            :class="!hasNext ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
                 <!-- Scrollable document area -->
-                <div class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
+                <div class="flex-1 overflow-y-auto pt-12 pb-32 scrollable-panel scrollable-dark">
                     <div x-show="loading" class="flex items-center justify-center py-12">
                         <span class="text-sm text-slate-500">Loading...</span>
                     </div>
