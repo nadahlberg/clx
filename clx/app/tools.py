@@ -10,7 +10,7 @@ _su = ShortUUID()
 
 
 class Search(Tool):
-    """Search documents in the project using a structured query. Build queries using Contains, StartsWith, Not, Or, and And nodes."""
+    """Search documents in the project using a structured query. Build queries using Contains, StartsWith, Not, Or, and And nodes. All text matching is case-insensitive."""
 
     query: Query = Field(
         description="A structured query object. Use {type:'contains', value:'...'} for text search, {type:'startsWith', value:'...'} for prefix search, {type:'not', query:...} for negation, {type:'or', queries:[...]} for OR, {type:'and', queries:[...]} for AND."
