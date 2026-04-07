@@ -232,7 +232,7 @@
     <!-- Three-column layout -->
     <div class="grid grid-cols-[280px_1fr_340px] h-full">
         <!-- Left sidebar -->
-        <aside class="border-r border-border flex flex-col">
+        <aside class="border-r border-border flex flex-col min-h-0">
             <div class="h-12 shrink-0 border-b border-border flex items-center justify-between px-4">
                 <span class="text-sm font-semibold text-gray-800 truncate" x-text="projectName"></span>
                 <a href="/" class="text-gray-500 hover:text-gray-700 transition-colors" title="All Projects">
@@ -591,7 +591,7 @@
         </div>
 
         <!-- Right sidebar: Label panel -->
-        <aside class="border-l border-border flex flex-col">
+        <aside class="border-l border-border flex flex-col min-h-0">
             <div class="h-12 shrink-0 border-b border-border flex items-center px-4 gap-2 relative">
                 <button @click="labelDropdownOpen = !labelDropdownOpen"
                         class="flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-gray-900 transition-colors min-w-0 flex-1">
