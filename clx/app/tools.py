@@ -49,7 +49,7 @@ class Search(Tool):
 
         if not rows:
             return f"[search:{search_id}] No documents found."
-        lines = [f"[{r[0]}] {r[1]}" for r in rows]
+        lines = [f"doc_id={r[0]}\n{r[1]}" for r in rows]
         return (
             f"[search:{search_id}] {len(rows)} results:\n\n"
             + "\n---\n".join(lines)
@@ -107,11 +107,11 @@ class UpdateProjectInstructions(Tool):
 
 
 class AddDocumentsToLabel(Tool):
-    """Add documents to the current label. Provide EITHER a search_id (with optional num_docs to limit) OR a list of document_ids, not both."""
+    """Add documents to the current label. Preferred: pass search_id from a previous Search call to add those results. Alternatively, pass explicit document_ids (the short UUIDs shown as doc_id= in search results). Do not pass both."""
 
     search_id: str | None = Field(
         default=None,
-        description="A search ID from a previous Search call. Adds all (or num_docs) documents from that search.",
+        description="A search ID from a previous Search call (e.g. 'aBcDeFgH'). Adds all (or num_docs) documents from that search.",
     )
     num_docs: int | None = Field(
         default=None,
@@ -119,11 +119,11 @@ class AddDocumentsToLabel(Tool):
     )
     document_ids: list[str] | None = Field(
         default=None,
-        description="Explicit list of document IDs to add.",
+        description="Explicit list of document IDs (short UUIDs, NOT document text) to add.",
     )
 
     def __call__(self, agent):
-        from clx.app.models import LabelDocument
+        from clx.app.models import Document, LabelDocument
 
         label = agent.thread.label
 
@@ -143,11 +143,22 @@ class AddDocumentsToLabel(Tool):
         else:
             doc_ids = self.document_ids
 
+        # Validate that all IDs actually exist to avoid FK violations.
+        valid_ids = set(
+            Document.objects.filter(
+                id__in=doc_ids, project=label.project
+            ).values_list("id", flat=True)
+        )
+        doc_ids = [did for did in doc_ids if did in valid_ids]
+
+        if not doc_ids:
+            return "Error: none of the provided document IDs are valid."
+
         objects = [
             LabelDocument(label=label, document_id=did) for did in doc_ids
         ]
-        created = LabelDocument.objects.bulk_create(objects, ignore_conflicts=True)
-        return f"Added {len(created)} document(s) to label '{label.name}' ({len(doc_ids)} requested, duplicates ignored)."
+        LabelDocument.objects.bulk_create(objects, ignore_conflicts=True)
+        return f"Added {len(doc_ids)} document(s) to label '{label.name}' (duplicates ignored)."
 
 
 class AskUser(Tool):
