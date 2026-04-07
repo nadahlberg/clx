@@ -572,7 +572,7 @@
                     </div>
                 </div>
                 <!-- Scrollable document area -->
-                <div class="flex-1 overflow-y-auto scrollable-panel scrollable-dark">
+                <div class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                     <div x-show="loading" class="flex items-center justify-center py-12">
                         <span class="text-sm text-slate-500">Loading...</span>
                     </div>
@@ -590,7 +590,7 @@
             </div>
 
             <!-- Tab: Labels -->
-            <div x-show="activeTab === 'labels'" x-cloak class="flex-1 overflow-y-auto p-4 bg-slate-900 scrollable-panel scrollable-dark">
+            <div x-show="activeTab === 'labels'" x-cloak class="flex-1 overflow-y-auto p-4 pb-32 bg-slate-900 scrollable-panel scrollable-dark">
                 <div class="space-y-3">
                     <template x-for="label in labels" :key="label.id">
                         <div class="border border-slate-800 rounded-lg px-4 py-3 bg-slate-900 hover:border-slate-700 transition-colors cursor-default flex items-center gap-2">
@@ -606,7 +606,7 @@
 
             <!-- Tab: Settings -->
             <div x-show="activeTab === 'settings'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900">
-                <div class="flex-1 overflow-y-auto scrollable-panel scrollable-dark">
+                <div class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                 <!-- Label Settings -->
                 <div class="border-b border-slate-800 pb-1">
                     <div class="px-4 py-3 flex items-center justify-between">
