@@ -98,6 +98,24 @@
                      this.$nextTick(() => { this.scrollChat(); });
                  }
                  if (this._sendingThreadId === threadId) this._sendingThreadId = null;
+                 // Refresh project/label data if agent updated instructions
+                 const toolNames = data.messages
+                     .filter(m => m.role === 'assistant' && m.tool_calls)
+                     .flatMap(m => m.tool_calls.map(tc => tc.function.name));
+                 if (toolNames.includes('UpdateProjectInstructions')) {
+                     fetch('/api/projects/{{ project.id }}/update', {
+                         method: 'POST',
+                         headers: {'Content-Type': 'application/json'},
+                         body: JSON.stringify({})
+                     }).then(r => r.json()).then(p => {
+                         this.projectName = p.name;
+                         this.projectInstructions = p.instructions;
+                         this.allowAIChanges = !p.manual_instructions;
+                     });
+                 }
+                 if (toolNames.includes('UpdateLabelInstructions')) {
+                     this.fetchLabels();
+                 }
              }).catch(() => {
                  if (this._sendingThreadId === threadId) this._sendingThreadId = null;
                  if (this.activeThread && this.activeThread.id === threadId) this.chatSending = false;
@@ -403,28 +421,40 @@
                                                 <div>
                                                     <!-- AskUser tool call -->
                                                     <template x-if="tc.function.name === 'AskUser'">
-                                                        <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-lg px-4 py-3">
-                                                            <p class="text-sm font-medium text-slate-200 mb-2" x-text="JSON.parse(tc.function.arguments).question"></p>
-                                                            <div class="flex flex-wrap gap-1.5">
+                                                        <div x-data="{ customAnswer: '' }" class="bg-teal-950/40 border border-teal-800/40 rounded-lg px-4 py-3">
+                                                            <p class="text-sm font-medium text-slate-200 mb-3" x-text="JSON.parse(tc.function.arguments).question"></p>
+                                                            <div class="flex flex-col gap-1.5 items-start mb-3">
                                                                 <template x-for="opt in JSON.parse(tc.function.arguments).options" :key="opt">
-                                                                    <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + opt; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } })"
-                                                                            class="px-3 py-1.5 text-xs rounded-md border border-indigo-700/50 bg-indigo-900/30 text-indigo-300 hover:bg-indigo-800/40 transition-colors">
+                                                                    <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + 'Q: ' + JSON.parse(tc.function.arguments).question + '\nA: ' + opt; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } })"
+                                                                            class="px-3 py-1.5 text-xs rounded-md border border-teal-700/50 bg-teal-900/30 text-teal-300 hover:bg-teal-800/40 transition-colors">
                                                                         <span x-text="opt"></span>
                                                                     </button>
                                                                 </template>
-                                                                <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + ''; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.focus(); } })"
-                                                                        class="px-3 py-1.5 text-xs rounded-md border border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 transition-colors">
-                                                                    <i class="fas fa-pen text-[10px] mr-1"></i> Type something else
+                                                            </div>
+                                                            <label class="block text-xs text-slate-400 mb-1">Something else</label>
+                                                            <div class="flex gap-2">
+                                                                <input type="text" x-model="customAnswer"
+                                                                       @keydown.enter.prevent="if (customAnswer.trim()) { chatInput = (chatInput ? chatInput + '\n' : '') + 'Q: ' + JSON.parse(tc.function.arguments).question + '\nA: ' + customAnswer.trim(); customAnswer = ''; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } }); }"
+                                                                       placeholder="Type your answer..."
+                                                                       class="flex-1 bg-slate-800/60 border border-slate-700/50 rounded-md px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500">
+                                                                <button @click="if (customAnswer.trim()) { chatInput = (chatInput ? chatInput + '\n' : '') + 'Q: ' + JSON.parse(tc.function.arguments).question + '\nA: ' + customAnswer.trim(); customAnswer = ''; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } }); }"
+                                                                        class="px-2.5 py-1.5 text-xs rounded-md bg-teal-700/40 text-teal-300 hover:bg-teal-600/40 transition-colors">
+                                                                    <i class="fas fa-arrow-right text-[10px]"></i>
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     </template>
                                                     <!-- Other tool calls -->
                                                     <template x-if="tc.function.name !== 'AskUser'">
-                                                        <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 border border-slate-700/50 rounded-md px-3 py-2">
-                                                            <i class="fas fa-wrench text-slate-500"></i>
-                                                            <span class="font-medium text-slate-300" x-text="tc.function.name"></span>
-                                                            <span class="text-slate-500 truncate max-w-[200px]" x-text="tc.function.arguments"></span>
+                                                        <div x-data="{ expanded: false }" class="bg-slate-800/50 border border-slate-700/50 rounded-md">
+                                                            <button @click="expanded = !expanded" class="w-full flex items-center gap-2 text-xs px-3 py-2 hover:bg-slate-700/30 transition-colors rounded-md">
+                                                                <i class="fas fa-wrench text-slate-500 text-[10px]"></i>
+                                                                <span class="font-medium text-slate-300" x-text="tc.function.name"></span>
+                                                                <i class="fas text-[10px] text-slate-500 ml-auto" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                                            </button>
+                                                            <div x-show="expanded" x-cloak class="px-3 pb-2">
+                                                                <pre class="text-xs text-slate-400 whitespace-pre-wrap bg-slate-900/50 rounded px-2.5 py-2 max-h-48 overflow-y-auto" x-text="JSON.stringify(JSON.parse(tc.function.arguments), null, 2)"></pre>
+                                                            </div>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -594,9 +624,11 @@
                             </label>
                         </div>
                         <textarea x-model="projectInstructions"
-                                  rows="6"
+                                  x-init="$nextTick(() => { $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'; })"
+                                  @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                  rows="3"
                                   placeholder="Project-level instructions for the agent..."
-                                  class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y placeholder:text-slate-600"></textarea>
+                                  class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-slate-600"></textarea>
                     </div>
                 </div>
             </div>
