@@ -421,12 +421,12 @@
                                                 <div>
                                                     <!-- AskUser tool call -->
                                                     <template x-if="tc.function.name === 'AskUser'">
-                                                        <div x-data="{ customAnswer: '' }" class="bg-teal-950/40 border border-teal-800/40 rounded-lg px-4 py-3">
+                                                        <div x-data="{ customAnswer: '' }" class="bg-teal-950/40 border border-teal-800/40 rounded-lg px-4 py-3 text-left">
                                                             <p class="text-sm font-medium text-slate-200 mb-3" x-text="JSON.parse(tc.function.arguments).question"></p>
                                                             <div class="flex flex-col gap-1.5 items-start mb-3">
                                                                 <template x-for="opt in JSON.parse(tc.function.arguments).options" :key="opt">
                                                                     <button @click="chatInput = (chatInput ? chatInput + '\n' : '') + 'Q: ' + JSON.parse(tc.function.arguments).question + '\nA: ' + opt; $nextTick(() => { const ta = document.querySelector('#chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; } })"
-                                                                            class="px-3 py-1.5 text-xs rounded-md border border-teal-700/50 bg-teal-900/30 text-teal-300 hover:bg-teal-800/40 transition-colors">
+                                                                            class="px-3 py-1.5 text-xs text-left rounded-md border border-teal-700/50 bg-teal-900/30 text-teal-300 hover:bg-teal-800/40 transition-colors">
                                                                         <span x-text="opt"></span>
                                                                     </button>
                                                                 </template>
