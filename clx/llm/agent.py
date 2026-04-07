@@ -189,7 +189,7 @@ class Agent:
                 messages, **completion_args, call_tools=True
             )
             messages = None  # Only pass messages on the first step
-            if self.r.choices[0].finish_reason != "tool_calls":
+            if not response_message.get("tool_calls"):
                 break
         return response_message
 
