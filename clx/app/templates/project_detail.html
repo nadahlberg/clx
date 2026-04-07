@@ -23,6 +23,7 @@
          newLabelName: '',
          editingLabelInstructions: false,
          filterLabelOnly: false,
+         filterAnnotation: null,
          dangerAction: null,
          dangerConfirmText: '',
          threads: [],
@@ -137,7 +138,8 @@
          _filterParams() {
              const p = new URLSearchParams();
              if (this.queryString.trim()) p.set('q', this.queryString.trim());
-             if (this.filterLabelOnly && this.activeLabel) p.set('label', this.activeLabel.id);
+             if ((this.filterLabelOnly || this.filterAnnotation) && this.activeLabel) p.set('label', this.activeLabel.id);
+             if (this.filterAnnotation && this.activeLabel) p.set('annotation', this.filterAnnotation);
              return p.toString();
          },
          search() {
@@ -210,6 +212,7 @@
              this.chatInput = '';
              fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
              this.fetchThreads();
+             if (this.activeTab !== 'agent') this.fetchDocs();
          },
          createLabel() {
              const name = this.newLabelName.trim();
@@ -377,11 +380,25 @@
                         class="w-full px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
                     <i class="fas fa-search mr-1"></i> Search
                 </button>
-                <button @click="filterLabelOnly = !filterLabelOnly; search()"
+                <button @click="filterLabelOnly = !filterLabelOnly; if (!filterLabelOnly) filterAnnotation = null; search()"
                         class="w-full mt-2 px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5"
-                        :class="filterLabelOnly ? 'bg-teal-600 text-white hover:bg-teal-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700'">
+                        :class="filterLabelOnly || filterAnnotation ? 'bg-teal-600 text-white hover:bg-teal-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700'">
                     <i class="fas fa-tag text-[10px]"></i> Train Examples
                 </button>
+                <div class="mt-2">
+                    <label class="text-xs font-medium text-slate-500 mb-1 block">Annotation</label>
+                    <div class="flex rounded-md overflow-hidden border border-slate-700">
+                        <template x-for="opt in ['yes', 'no', 'skip', 'none']" :key="opt">
+                            <button @click="filterAnnotation = filterAnnotation === opt ? null : opt; if (filterAnnotation) filterLabelOnly = true; search()"
+                                    class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors capitalize"
+                                    :class="filterAnnotation === opt
+                                        ? (opt === 'yes' ? 'bg-emerald-600 text-white' : opt === 'no' ? 'bg-red-600 text-white' : opt === 'skip' ? 'bg-amber-600 text-white' : 'bg-slate-600 text-white')
+                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'"
+                                    x-text="opt">
+                            </button>
+                        </template>
+                    </div>
+                </div>
             </div>
         </aside>
 
@@ -611,8 +628,12 @@
                     </div>
                     <div x-show="!loading">
                         <template x-for="doc in documents" :key="doc.id">
-                            <div class="px-4 py-3 border-b border-slate-800 border-l-2 border-l-transparent hover:border-l-indigo-500 hover:bg-slate-800/50 transition-colors cursor-default">
-                                <p class="text-sm text-slate-300" x-text="doc.text"></p>
+                            <div class="px-4 py-3 border-b border-slate-800 border-l-2 border-l-transparent hover:border-l-indigo-500 hover:bg-slate-800/50 transition-colors cursor-default flex items-start gap-2">
+                                <p class="text-sm text-slate-300 flex-1" x-text="doc.text"></p>
+                                <span x-show="doc.annotation"
+                                      class="shrink-0 mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase"
+                                      :class="doc.annotation === 'yes' ? 'bg-emerald-900/50 text-emerald-400' : doc.annotation === 'no' ? 'bg-red-900/50 text-red-400' : 'bg-amber-900/50 text-amber-400'"
+                                      x-text="doc.annotation"></span>
                             </div>
                         </template>
                         <div x-show="documents.length === 0" class="flex items-center justify-center py-12">

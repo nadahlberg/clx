@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery
 from postgres_copy import CopyManager, CopyQuerySet
 from pydantic import BaseModel
 
@@ -190,6 +190,38 @@ class SearchQuerySet(CopyQuerySet):
     def training_examples(self, label_id: str) -> SearchQuerySet:
         """Filter to documents in a label's training set."""
         return self.filter(label_documents__label_id=label_id)
+
+    def with_annotation(
+        self, label_id: str, source: str = "agent"
+    ) -> SearchQuerySet:
+        """Annotate each document with its classification value for label+source.
+
+        Adds an `annotation_value` field (str or None) to each row.
+        Uses a single subquery — no N+1.
+        """
+        from clx.app.models import ClassificationAnnotation
+
+        return self.annotate(
+            annotation_value=Subquery(
+                ClassificationAnnotation.objects.filter(
+                    label_document__document=OuterRef("pk"),
+                    label_document__label_id=label_id,
+                    source=source,
+                ).values("value")[:1]
+            )
+        )
+
+    def filter_annotation(
+        self, label_id: str, value: str, source: str = "agent"
+    ) -> SearchQuerySet:
+        """Filter documents by annotation value for a label+source.
+
+        value: 'yes', 'no', 'skip', or 'none' (no annotation exists).
+        """
+        qs = self.training_examples(label_id).with_annotation(label_id, source)
+        if value == "none":
+            return qs.filter(annotation_value__isnull=True)
+        return qs.filter(annotation_value=value)
 
 
 class SearchManager(CopyManager.from_queryset(SearchQuerySet)):

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from shortuuid import ShortUUID
 
 from clx.app.search import Query
@@ -21,7 +21,11 @@ class Search(Tool):
 
     label_only: bool = Field(
         default=False,
-        description="If true, only search documents already added to the current label.",
+        description="If true, only search documents already added to the current label's training set.",
+    )
+    annotation: str | None = Field(
+        default=None,
+        description="Filter by annotation value: 'yes', 'no', 'skip', or 'none' (unannotated). Implies label_only.",
     )
     count_only: bool = Field(
         default=False,
@@ -30,10 +34,13 @@ class Search(Tool):
 
     def __call__(self, agent):
         project = agent.thread.label.project
+        label_id = agent.thread.label_id
         documents = project.documents.order_by("shuffle_key")
         documents = documents.text_query(self.query.model_dump())
-        if self.label_only:
-            documents = documents.training_examples(agent.thread.label_id)
+        if self.annotation:
+            documents = documents.filter_annotation(label_id, self.annotation)
+        elif self.label_only:
+            documents = documents.training_examples(label_id)
 
         if self.count_only:
             total = documents.count()
@@ -168,6 +175,53 @@ class AddTrainingExamples(Tool):
         ]
         LabelDocument.objects.bulk_create(objects, ignore_conflicts=True)
         return f"Added {len(doc_ids)} training example(s) to label '{label.name}' (duplicates ignored)."
+
+
+class AnnotationItem(BaseModel):
+    document_id: str = Field(description="The document ID (short UUID from search results).")
+    value: Literal["yes", "no", "skip"] = Field(description="The classification value.")
+
+
+class Annotate(Tool):
+    """Annotate training examples for the current label. Each annotation classifies a document as 'yes', 'no', or 'skip'. If an annotation already exists for a document it will be updated."""
+
+    annotations: list[AnnotationItem] = Field(
+        description="List of annotations to create or update."
+    )
+
+    def __call__(self, agent):
+        from clx.app.models import ClassificationAnnotation, LabelDocument
+
+        label = agent.thread.label
+        doc_ids = [a.document_id for a in self.annotations]
+
+        # Fetch all LabelDocument rows for these docs+label in one query.
+        ld_map = dict(
+            LabelDocument.objects.filter(
+                label=label, document_id__in=doc_ids
+            ).values_list("document_id", "id")
+        )
+
+        missing = [did for did in doc_ids if did not in ld_map]
+        if missing:
+            return f"Error: {len(missing)} document(s) not in this label's training set. Add them first with AddTrainingExamples."
+
+        # Bulk upsert annotations.
+        objects = [
+            ClassificationAnnotation(
+                label_document_id=ld_map[a.document_id],
+                value=a.value,
+                source="agent",
+            )
+            for a in self.annotations
+        ]
+        ClassificationAnnotation.objects.bulk_create(
+            objects,
+            update_conflicts=True,
+            unique_fields=["label_document", "source"],
+            update_fields=["value", "updated_at"],
+        )
+        return f"Annotated {len(self.annotations)} document(s)."
 
 
 class AskUser(Tool):

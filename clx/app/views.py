@@ -69,15 +69,23 @@ def projects_api(request):
 
 
 def _filtered_documents(project, request):
-    """Return a queryset of documents filtered by request params."""
+    """Return a queryset of documents filtered by request params.
+
+    Returns (queryset, label_id, has_annotation_col).
+    """
     documents = project.documents.order_by("shuffle_key")
     qs = request.GET.get("q", "").strip()
     if qs:
         documents = documents.query_string(qs)
     label_id = request.GET.get("label", "").strip()
-    if label_id:
+    annotation = request.GET.get("annotation", "").strip()
+    has_annotation_col = False
+    if annotation and label_id:
+        documents = documents.filter_annotation(label_id, annotation)
+        has_annotation_col = True
+    elif label_id:
         documents = documents.training_examples(label_id)
-    return documents
+    return documents, label_id, has_annotation_col
 
 
 @require_GET
@@ -85,7 +93,10 @@ def project_docs_api(request, project_id):
     """GET: paginated documents for a project."""
     project = get_object_or_404(Project, id=project_id)
     page_number = max(1, int(request.GET.get("page", 1)))
-    documents = _filtered_documents(project, request)
+    documents, label_id, has_annotation_col = _filtered_documents(project, request)
+    # Attach annotation values in a single subquery when a label is active.
+    if label_id and not has_annotation_col:
+        documents = documents.with_annotation(label_id)
     # Fetch one extra to detect if there's a next page, avoiding COUNT query.
     offset = (page_number - 1) * DOCS_PER_PAGE
     batch = list(documents[offset : offset + DOCS_PER_PAGE + 1])
@@ -99,6 +110,7 @@ def project_docs_api(request, project_id):
                     "text": d.text,
                     "text_prefix": d.text_prefix,
                     "meta": d.meta,
+                    "annotation": getattr(d, "annotation_value", None),
                 }
                 for d in page_docs
             ],
@@ -112,7 +124,7 @@ def project_docs_api(request, project_id):
 def project_docs_count_api(request, project_id):
     """GET: count of documents for a project (with filters)."""
     project = get_object_or_404(Project, id=project_id)
-    documents = _filtered_documents(project, request)
+    documents, _, _ = _filtered_documents(project, request)
     return JsonResponse({"total_count": documents.count()})
 
 

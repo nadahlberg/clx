@@ -204,6 +204,29 @@ class LabelDocument(Base):
         ]
 
 
+class ClassificationAnnotation(Base):
+    """An annotation on a label document."""
+
+    class Value(models.TextChoices):
+        YES = "yes"
+        NO = "no"
+        SKIP = "skip"
+
+    label_document = models.ForeignKey(
+        LabelDocument, on_delete=models.CASCADE, related_name="annotations"
+    )
+    value = models.CharField(max_length=4, choices=Value.choices)
+    source = models.CharField(max_length=255)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["label_document", "source"],
+                name="annotation_labeldoc_source_uniq",
+            )
+        ]
+
+
 class Message(Base):
     """Model for messages within a thread."""
 

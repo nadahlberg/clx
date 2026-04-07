@@ -1,6 +1,7 @@
 from clx.app.models import Message
 from clx.app.tools import (
     AddTrainingExamples,
+    Annotate,
     AskUser,
     Search,
     UpdateLabelInstructions,
@@ -39,6 +40,7 @@ class CLXAgent(Agent):
     default_tools = [
         Search,
         AddTrainingExamples,
+        Annotate,
         UpdateLabelInstructions,
         UpdateProjectInstructions,
         AskUser,
