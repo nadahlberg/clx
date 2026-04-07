@@ -19,13 +19,13 @@ class Search(Tool):
         default=10, description="Number of results to return (max 100)"
     )
 
-    label_only: bool = Field(
+    from_training_set: bool = Field(
         default=False,
-        description="If true, only search documents already added to the current label's training set.",
+        description="If true, only search documents in the current label's training set.",
     )
     annotation: str | None = Field(
         default=None,
-        description="Filter by annotation value: 'yes', 'no', 'skip', 'none' (unannotated), or 'any' (has any annotation). Implies label_only.",
+        description="Filter by annotation value: 'yes', 'no', 'skip', 'none' (unannotated), or 'any' (has any annotation). Implies from_training_set.",
     )
     count_only: bool = Field(
         default=False,
@@ -39,7 +39,7 @@ class Search(Tool):
         documents = documents.text_query(self.query.model_dump())
         if self.annotation:
             documents = documents.filter_annotation(label_id, self.annotation)
-        elif self.label_only:
+        elif self.from_training_set:
             documents = documents.training_examples(label_id)
 
         if self.count_only:
@@ -56,7 +56,7 @@ class Search(Tool):
         searches[search_id] = {
             "query": self.query.model_dump(),
             "num_results": num_results,
-            "label_only": self.label_only,
+            "from_training_set": self.from_training_set,
             "result_count": len(rows),
             "document_ids": doc_ids,
         }
