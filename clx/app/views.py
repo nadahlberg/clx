@@ -225,6 +225,8 @@ def delete_label_api(request, project_id, label_id):
     """POST: delete a label."""
     project = get_object_or_404(Project, id=project_id)
     label = get_object_or_404(Label, id=label_id, project=project)
+    if project.labels.count() <= 1:
+        return JsonResponse({"error": "Cannot delete the only label."}, status=400)
     was_active = project.active_label_id == label.id
     label.delete()
     if was_active:

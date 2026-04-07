@@ -639,7 +639,7 @@
                             Save
                         </button>
                     </div>
-                    <div class="px-4 pb-4 space-y-4" x-show="activeLabel">
+                    <div class="px-4 pb-6 space-y-4" x-show="activeLabel">
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-1">Label Name</label>
                             <input type="text"
@@ -686,7 +686,7 @@
                             Save
                         </button>
                     </div>
-                    <div class="px-4 pb-4 space-y-4">
+                    <div class="px-4 pb-6 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
                         <input type="text"
@@ -724,7 +724,7 @@
                 </div><!-- /Project Settings -->
 
                 <!-- Danger Zone -->
-                <div class="border-t border-red-900/30 mt-4">
+                <div class="border-t border-slate-800 mt-4">
                     <div class="px-4 py-3">
                         <h3 class="text-xs font-semibold text-red-400 uppercase tracking-wider">Danger Zone</h3>
                     </div>
@@ -732,10 +732,12 @@
                         <div class="flex items-center justify-between bg-red-950/20 border border-red-900/30 rounded-lg px-4 py-3" x-show="activeLabel">
                             <div>
                                 <p class="text-sm font-medium text-slate-300">Delete Label</p>
-                                <p class="text-xs text-slate-500">Permanently delete this label and all its threads.</p>
+                                <p class="text-xs text-slate-500" x-text="labels.length <= 1 ? 'Cannot delete the only label.' : 'Permanently delete this label and all its threads.'"></p>
                             </div>
                             <button @click="confirmDanger('deleteLabel')"
-                                    class="px-3 py-1.5 text-xs font-medium rounded-md border border-red-700/50 text-red-400 hover:bg-red-900/30 transition-colors">
+                                    :disabled="labels.length <= 1"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-md border transition-colors"
+                                    :class="labels.length <= 1 ? 'border-slate-700 text-slate-600 cursor-not-allowed' : 'border-red-700/50 text-red-400 hover:bg-red-900/30'">
                                 Delete
                             </button>
                         </div>
