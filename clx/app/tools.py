@@ -203,25 +203,29 @@ class Annotate(Tool):
         )
 
         missing = [did for did in doc_ids if did not in ld_map]
-        if missing:
-            return f"Error: {len(missing)} document(s) not in this label's training set. Add them first with AddTrainingExamples."
+        valid = [a for a in self.annotations if a.document_id in ld_map]
 
-        # Bulk upsert annotations.
-        objects = [
-            ClassificationAnnotation(
-                label_document_id=ld_map[a.document_id],
-                value=a.value,
-                source="agent",
+        # Bulk upsert annotations for valid docs.
+        if valid:
+            objects = [
+                ClassificationAnnotation(
+                    label_document_id=ld_map[a.document_id],
+                    value=a.value,
+                    source="agent",
+                )
+                for a in valid
+            ]
+            ClassificationAnnotation.objects.bulk_create(
+                objects,
+                update_conflicts=True,
+                unique_fields=["label_document", "source"],
+                update_fields=["value", "updated_at"],
             )
-            for a in self.annotations
-        ]
-        ClassificationAnnotation.objects.bulk_create(
-            objects,
-            update_conflicts=True,
-            unique_fields=["label_document", "source"],
-            update_fields=["value", "updated_at"],
-        )
-        return f"Annotated {len(self.annotations)} document(s)."
+
+        parts = [f"Annotated {len(valid)} document(s)."]
+        if missing:
+            parts.append(f"Skipped {len(missing)} not in training set (add with AddTrainingExamples): {', '.join(missing)}")
+        return " ".join(parts)
 
 
 class AskUser(Tool):
