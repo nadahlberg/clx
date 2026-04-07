@@ -40,9 +40,7 @@ class Search(Tool):
             return f"{total} document(s) match."
 
         num_results = min(self.num_results, 100)
-        rows = list(
-            documents.values_list("id", "text")[:num_results]
-        )
+        rows = list(documents.values_list("id", "text")[:num_results])
 
         # Generate a short search ID and store in agent state.
         search_id = _su.random(length=8)
