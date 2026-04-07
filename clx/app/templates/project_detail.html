@@ -171,6 +171,7 @@
                  .catch(() => { this.loading = false; });
          },
          fetchCount() {
+             if (this.countLoading) return;
              this.countLoading = true;
              const params = this._filterParams();
              fetch('/api/projects/{{ project.id }}/docs/count' + (params ? '?' + params : ''))
