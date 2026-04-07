@@ -5,6 +5,7 @@ from clx.app.tools import (
     AddTrainingExamples,
     Annotate,
     AskUser,
+    CompactMemory,
     Search,
     UpdateLabelInstructions,
     UpdateProjectInstructions,
@@ -43,6 +44,7 @@ class CLXAgent(Agent):
         Search,
         AddTrainingExamples,
         Annotate,
+        CompactMemory,
         UpdateLabelInstructions,
         UpdateProjectInstructions,
         AskUser,
@@ -79,18 +81,39 @@ class CLXAgent(Agent):
             label_instructions_block=label_block,
         )
 
-        # Load persisted messages and prepend system prompt.
-        db_messages = list(
-            thread.messages.order_by("created_at").values_list(
-                "data", flat=True
-            )
+        # Find the last compact message (if any) and load from there.
+        compact_msg = (
+            thread.messages.filter(is_compact=True)
+            .order_by("-created_at")
+            .first()
         )
-        messages = [{"role": "system", "content": system_prompt}] + db_messages
 
-        # Track how many messages are already persisted so on_step
-        # only saves new ones.  The +1 accounts for the system prompt
-        # which is in self.messages but not in the DB.
-        self._persisted_count = len(db_messages) + 1
+        if compact_msg:
+            summary = compact_msg.data.get("content", "")
+            db_messages = list(
+                thread.messages.filter(created_at__gt=compact_msg.created_at)
+                .order_by("created_at")
+                .values_list("data", flat=True)
+            )
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": f"[Prior conversation summary]\n{summary}",
+                },
+            ] + db_messages
+            # +2 for system prompt and synthetic summary message
+            self._persisted_count = len(db_messages) + 2
+        else:
+            db_messages = list(
+                thread.messages.order_by("created_at").values_list(
+                    "data", flat=True
+                )
+            )
+            messages = [
+                {"role": "system", "content": system_prompt}
+            ] + db_messages
+            self._persisted_count = len(db_messages) + 1
 
         super().__init__(
             model=thread.model,
@@ -109,6 +132,10 @@ class CLXAgent(Agent):
                 thread=self.thread,
                 data=msg,
                 num_tokens=message_tokens(msg),
+                is_compact=(
+                    msg.get("role") == "tool"
+                    and msg.get("name") == "CompactMemory"
+                ),
             )
             for msg in new_messages
         ]

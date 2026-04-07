@@ -433,13 +433,20 @@
                     <span class="text-slate-700">|</span>
                     <span x-text="'$' + (threadUsage?.total_cost || 0).toFixed(4)"></span>
                 </div>
-                <!-- New thread button (floating) -->
-                <button x-show="activeThread"
-                        @click="activeThread = null; chatMessages = []; chatSending = false; threadUsage = null"
-                        class="absolute top-3 right-3 z-10 px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700"
-                        title="New thread">
-                    <i class="fas fa-plus text-[10px] mr-1"></i> New thread
-                </button>
+                <!-- Floating action buttons (top-right) -->
+                <div x-show="activeThread" class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                    <button @click="if (!chatSending) { chatSending = true; _doSend('Compact your memory now. Write a detailed summary of our conversation.'); }"
+                            :disabled="chatSending"
+                            class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Compact memory">
+                        <i class="fas fa-broom text-[10px] mr-1"></i> Compact
+                    </button>
+                    <button @click="activeThread = null; chatMessages = []; chatSending = false; threadUsage = null"
+                            class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700"
+                            title="New thread">
+                        <i class="fas fa-plus text-[10px] mr-1"></i> New thread
+                    </button>
+                </div>
                 <!-- Chat messages -->
                 <div id="chat-scroll" class="flex-1 overflow-y-auto px-4 pb-4 pt-12 scrollable-panel scrollable-dark">
                     <div x-show="chatMessages.length === 0 && !chatSending" class="flex items-center justify-center h-full">
@@ -548,8 +555,29 @@
                                     </div>
                                 </template>
 
-                                <!-- Tool response (hide AskUser responses) -->
-                                <template x-if="msg.role === 'tool' && msg.name !== 'AskUser'">
+                                <!-- CompactMemory summary -->
+                                <template x-if="msg.role === 'tool' && msg.name === 'CompactMemory'">
+                                    <div class="flex justify-center my-2">
+                                        <div x-data="{ expanded: false }" class="max-w-[90%] w-full">
+                                            <button @click="expanded = !expanded"
+                                                    class="w-full flex items-center justify-center gap-2 py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                                                <div class="flex-1 border-t border-slate-700/50"></div>
+                                                <i class="fas fa-broom text-[10px]"></i>
+                                                <span>Memory compacted</span>
+                                                <i class="fas text-[10px]" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                                <div class="flex-1 border-t border-slate-700/50"></div>
+                                            </button>
+                                            <div x-show="expanded" x-cloak
+                                                 class="mt-1 bg-slate-800/60 border border-slate-700/40 rounded-lg px-4 py-3">
+                                                <div class="text-xs text-slate-400 prose-chat prose-chat-dark max-h-64 overflow-y-auto"
+                                                     x-html="renderMarkdown(msg.content || '')"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Tool response (hide AskUser and CompactMemory responses) -->
+                                <template x-if="msg.role === 'tool' && msg.name !== 'AskUser' && msg.name !== 'CompactMemory'">
                                     <div class="flex justify-start">
                                         <div class="max-w-[80%] bg-slate-800/50 border border-slate-700/50 rounded-md px-3 py-2">
                                             <div class="flex items-center gap-1.5 mb-1">

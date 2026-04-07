@@ -234,6 +234,17 @@ class Annotate(Tool):
         return " ".join(parts)
 
 
+class CompactMemory(Tool):
+    """Compact the conversation by replacing prior messages with a summary. ONLY call this tool when the user explicitly asks to compact or summarize the conversation. Write a detailed, verbose summary that captures all important context, decisions, findings, and state so nothing is lost."""
+
+    summary: str = Field(
+        description="A detailed summary of the conversation so far. Be verbose — include key findings, decisions made, tool results, instructions given, and any state the agent should remember. This will replace all prior messages."
+    )
+
+    def __call__(self, agent):
+        return self.summary
+
+
 class AskUser(Tool):
     """Ask the user a question with proposed answer options. Use this when you need clarification or want the user to choose between options. The question and options will be presented to the user in an interactive card."""
 

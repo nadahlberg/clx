@@ -236,3 +236,4 @@ class Message(Base):
     )
     data = models.JSONField(default=dict)
     num_tokens = models.IntegerField(default=0)
+    is_compact = models.BooleanField(default=False)

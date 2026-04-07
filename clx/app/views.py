@@ -335,13 +335,28 @@ def create_thread_api(request, project_id, label_id):
     )
 
 
+def _active_token_count(thread, messages=None):
+    """Sum num_tokens from the last compact point onward."""
+    compact_msg = (
+        thread.messages.filter(is_compact=True)
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    if compact_msg:
+        qs = thread.messages.filter(created_at__gt=compact_msg)
+    else:
+        qs = thread.messages
+    return qs.aggregate(total=Sum("num_tokens"))["total"] or 0
+
+
 @require_GET
 def thread_messages_api(request, project_id, thread_id):
     """GET: list messages for a thread."""
     project = get_object_or_404(Project, id=project_id)
     thread = get_object_or_404(Thread, id=thread_id, label__project=project)
     messages = list(thread.messages.order_by("created_at"))
-    total_tokens = sum(m.num_tokens for m in messages)
+    total_tokens = _active_token_count(thread, messages)
     return JsonResponse(
         {
             "messages": [
@@ -349,6 +364,7 @@ def thread_messages_api(request, project_id, thread_id):
                     "id": str(m.id),
                     "data": m.data,
                     "num_tokens": m.num_tokens,
+                    "is_compact": m.is_compact,
                 }
                 for m in messages
             ],
@@ -396,9 +412,7 @@ def send_message_api(request, project_id, thread_id):
         if m.get("role") != "system"
     ]
     thread.refresh_from_db(fields=["total_cost"])
-    total_tokens = thread.messages.aggregate(
-        total=Sum("num_tokens")
-    )["total"] or 0
+    total_tokens = _active_token_count(thread)
     return JsonResponse(
         {
             "messages": new_messages,
