@@ -227,18 +227,44 @@
          }
      }"
      x-init="fetchDocs(); fetchLabels()"
-     class="flex-1 min-h-0">
+     class="flex-1 min-h-0 flex flex-col">
+
+    <!-- Page-level navbar -->
+    <nav class="h-12 shrink-0 border-b border-border flex items-stretch bg-white">
+        <!-- Project name (aligned with left sidebar) -->
+        <div class="w-[280px] shrink-0 flex items-center px-4 border-r border-border">
+            <span class="text-sm font-semibold text-gray-800 truncate" x-text="projectName"></span>
+        </div>
+        <!-- Tabs (centered in remaining space) -->
+        <div class="flex-1 flex items-stretch">
+            <template x-for="tab in [
+                {id: 'agent', icon: 'fa-robot', label: 'Agent'},
+                {id: 'search', icon: 'fa-search', label: 'Search'},
+                {id: 'labels', icon: 'fa-tags', label: 'Labels'},
+                {id: 'settings', icon: 'fa-gear', label: 'Settings'}
+            ]" :key="tab.id">
+                <button @click="activeTab = tab.id"
+                        class="px-5 text-xs font-medium flex items-center gap-1.5 border-b-2 transition-colors relative"
+                        :class="activeTab === tab.id
+                            ? 'border-indigo-500 text-indigo-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
+                    <i class="fas" :class="tab.icon"></i>
+                    <span x-text="tab.label"></span>
+                </button>
+            </template>
+        </div>
+        <!-- Back to projects (aligned with right sidebar) -->
+        <div class="w-[340px] shrink-0 flex items-center justify-end px-4 border-l border-border">
+            <a href="/" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors">
+                <i class="fas fa-chevron-left text-[10px]"></i> Projects
+            </a>
+        </div>
+    </nav>
 
     <!-- Three-column layout -->
-    <div class="grid grid-cols-[280px_1fr_340px] h-full">
+    <div class="grid grid-cols-[280px_1fr_340px] flex-1 min-h-0">
         <!-- Left sidebar -->
         <aside class="border-r border-border flex flex-col min-h-0">
-            <div class="h-12 shrink-0 border-b border-border flex items-center justify-between px-4">
-                <span class="text-sm font-semibold text-gray-800 truncate" x-text="projectName"></span>
-                <a href="/" class="text-gray-500 hover:text-gray-700 transition-colors" title="All Projects">
-                    <i class="fas fa-layer-group"></i>
-                </a>
-            </div>
 
             <!-- Agent tab: Thread history -->
             <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 scrollable-panel">
@@ -300,23 +326,6 @@
 
         <!-- Center column -->
         <div class="flex flex-col min-h-0">
-            <!-- Tab navbar -->
-            <div class="h-10 shrink-0 border-b border-border flex items-stretch shadow-sm z-10">
-                <template x-for="tab in [
-                    {id: 'agent', icon: 'fa-robot', label: 'Agent'},
-                    {id: 'search', icon: 'fa-search', label: 'Search'},
-                    {id: 'labels', icon: 'fa-tags', label: 'Labels'},
-                    {id: 'settings', icon: 'fa-gear', label: 'Settings'}
-                ]" :key="tab.id">
-                    <button @click="activeTab = tab.id"
-                            class="flex-1 text-xs transition-colors flex items-center justify-center gap-1.5 border-r border-border last:border-r-0"
-                            :class="activeTab === tab.id ? 'bg-gray-100 text-gray-800 font-medium' : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'">
-                        <i class="fas" :class="tab.icon"></i>
-                        <span x-text="tab.label"></span>
-                    </button>
-                </template>
-            </div>
-
             <!-- Tab: Agent (Chat) -->
             <div x-show="activeTab === 'agent'" class="flex-1 flex flex-col min-h-0 bg-surface relative">
                 <!-- New thread button (floating) -->
