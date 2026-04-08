@@ -409,7 +409,7 @@
          }
      }"
      x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks();
-              setInterval(() => { if (autopilotEnabled) { fetchTasksQuiet(); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { chatMessages = data.messages.map(m => m.data).filter(d => d.role !== 'system'); threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; $nextTick(() => { scrollChat(); }); } }); } } }, 5000)"
+              setInterval(() => { if (autopilotEnabled) { fetchTasksQuiet(); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = newMsgs.length !== chatMessages.length; if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } } }, 5000)"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->

@@ -141,48 +141,23 @@ class CLXAgent(Agent):
             qs = qs.filter(created_at__gte=compact_msg)
         return qs.aggregate(total=Sum("num_tokens"))["total"] or 0
 
-    def autopilot_run(self, message, max_nudges=3):
+    def autopilot_run(self, message):
         """Run agent in autopilot mode.
 
         Returns 'completed' or 'awaiting_input'.
-        Auto-nudges when the agent's turn ends without calling CompleteTask.
         Pre-compacts if token count exceeds 100k.
         """
         COMPACT_THRESHOLD = 100_000
-        NUDGE = (
-            "Continue working on the task. If you need user input, use the "
-            "AskUser tool to ask for clarification. If you have fully "
-            "completed the objective, call CompleteTask."
-        )
 
-        nudge_count = 0
-        while True:
-            # Check if compaction is needed before running.
-            if self.active_token_count() > COMPACT_THRESHOLD:
-                logger.info("Token count exceeds 100k, compacting memory...")
-                self.run(
-                    "Compact your memory now. Write a detailed summary "
-                    "of the full conversation so far."
-                )
+        # Check if compaction is needed before running.
+        if self.active_token_count() > COMPACT_THRESHOLD:
+            logger.info("Token count exceeds 100k, compacting memory...")
+            self.run(
+                "Compact your memory now. Write a detailed summary "
+                "of the full conversation so far."
+            )
 
-            # Run the agent step loop, breaking on CompleteTask.
-            result = self._autopilot_step_loop(message)
-            message = None
-
-            if result == "completed":
-                return "completed"
-
-            # Turn ended without CompleteTask — nudge or give up.
-            nudge_count += 1
-            if nudge_count > max_nudges:
-                logger.info("Max nudges reached, marking as awaiting_input")
-                return "awaiting_input"
-
-            logger.info(f"Nudging agent (attempt {nudge_count}/{max_nudges})")
-            message = NUDGE
-
-    def _autopilot_step_loop(self, message):
-        """Inner step loop that breaks on CompleteTask."""
+        # Run steps until CompleteTask is called or the turn ends.
         for _ in range(self.max_steps):
             response = self.step(message, call_tools=True)
             message = None
@@ -195,9 +170,9 @@ class CLXAgent(Agent):
                 if "CompleteTask" in tool_names:
                     return "completed"
             else:
-                return "turn_ended"
+                return "awaiting_input"
 
-        return "turn_ended"
+        return "awaiting_input"
 
     def on_step(self, response_message):
         """Save any new messages to the database."""

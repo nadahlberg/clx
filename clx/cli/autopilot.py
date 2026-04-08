@@ -62,7 +62,7 @@ def _get_thread_for_task(task):
     return label.autopilot_thread
 
 
-def _process_task(task, max_nudges, resume=False):
+def _process_task(task, resume=False):
     """Run a single task through the autopilot agent."""
     from clx.app.agent import CLXAgent
     from clx.app.tools import CompleteTask
@@ -98,13 +98,13 @@ def _process_task(task, max_nudges, resume=False):
             )
 
         logger.info(f"Running task: {task.prompt_id} (label={task.label})")
-        result = agent.autopilot_run(message, max_nudges=max_nudges)
+        result = agent.autopilot_run(message)
 
         if result == "completed":
             logger.info(f"Task completed: {task.prompt_id}")
             task.delete()
             task.project.update_tasks()
-        elif result in ("awaiting_input", "max_steps"):
+        else:
             logger.info(f"Task awaiting input: {task.prompt_id}")
             task.status = task.Status.AWAITING_INPUT
             task.save(update_fields=["status", "updated_at"])
@@ -113,7 +113,7 @@ def _process_task(task, max_nudges, resume=False):
         thread.save(update_fields=["autopilot_locked", "updated_at"])
 
 
-def _process_cycle(max_nudges):
+def _process_cycle():
     """Run one autopilot cycle across all enabled projects."""
     from clx.app.models import Project, Task
 
@@ -136,7 +136,7 @@ def _process_cycle(max_nudges):
                 created_at__gt=task.updated_at
             ).exists()
             if new_msgs:
-                _process_task(task, max_nudges, resume=True)
+                _process_task(task, resume=True)
                 project.refresh_from_db(fields=["autopilot_enabled"])
                 if not project.autopilot_enabled:
                     break
@@ -165,7 +165,7 @@ def _process_cycle(max_nudges):
             ).update(status=Task.Status.IN_PROGRESS)
             if updated:
                 task.refresh_from_db()
-                _process_task(task, max_nudges)
+                _process_task(task)
 
 
 def _cleanup():
@@ -180,8 +180,7 @@ def _cleanup():
 
 @click.command()
 @click.option("--interval", default=10, help="Seconds between polling cycles")
-@click.option("--max-nudges", default=3, help="Max auto-nudges per task before pausing")
-def autopilot(interval, max_nudges):
+def autopilot(interval):
     """Run the autopilot loop, processing tasks for enabled projects."""
     init_django()
 
@@ -198,7 +197,7 @@ def autopilot(interval, max_nudges):
 
     while True:
         try:
-            _process_cycle(max_nudges)
+            _process_cycle()
         except SystemExit:
             raise
         except Exception:
