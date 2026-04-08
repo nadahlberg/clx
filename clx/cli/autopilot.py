@@ -121,14 +121,23 @@ def _process_cycle(max_nudges):
     for project in projects:
         project.update_tasks()
 
-        # Check for awaiting_input tasks where the user has replied.
+        # Check for awaiting_input tasks where new messages appeared
+        # (user replied via the web UI, which reset the task to pending,
+        # OR the user replied but the agent didn't call a terminal tool
+        # and the task was set back to pending by send_message_api).
+        # We detect this by checking if there are messages after the task
+        # was last updated (i.e. the user interacted since the task paused).
         for task in project.tasks.filter(status=Task.Status.AWAITING_INPUT):
             thread = _get_thread_for_task(task)
             if not thread:
                 continue
-            last_msg = thread.messages.order_by("-created_at").first()
-            if last_msg and last_msg.data.get("role") == "user":
+            # Check for any messages after the task entered awaiting_input.
+            new_msgs = thread.messages.filter(
+                created_at__gt=task.updated_at
+            ).exists()
+            if new_msgs:
                 _process_task(task, max_nudges, resume=True)
+                project.refresh_from_db(fields=["autopilot_enabled"])
                 if not project.autopilot_enabled:
                     break
 
@@ -137,8 +146,19 @@ def _process_cycle(max_nudges):
         if not project.autopilot_enabled:
             continue
 
-        # Pick the next pending task (atomic claim).
-        task = project.tasks.filter(status=Task.Status.PENDING).order_by("created_at").first()
+        # Pick the next pending task, but only if its label's autopilot
+        # thread doesn't already have an active task.
+        active_labels = set(
+            project.tasks.filter(
+                status__in=[Task.Status.IN_PROGRESS, Task.Status.AWAITING_INPUT]
+            ).values_list("label_id", flat=True)
+        )
+        task = (
+            project.tasks.filter(status=Task.Status.PENDING)
+            .exclude(label_id__in=active_labels)
+            .order_by("created_at")
+            .first()
+        )
         if task:
             updated = Task.objects.filter(
                 id=task.id, status=Task.Status.PENDING
