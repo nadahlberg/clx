@@ -139,7 +139,9 @@ class Project(Base):
                 if not label.instructions.strip():
                     expected.append(("label_understanding", label.id))
                 else:
-                    ld_stats = LabelDocument.objects.filter(label=label).aggregate(
+                    ld_stats = LabelDocument.objects.filter(
+                        label=label
+                    ).aggregate(
                         total=Count("id"),
                         annotated=Count(
                             "id",
@@ -152,15 +154,13 @@ class Project(Base):
                         expected.append(("annotate", label.id))
 
         expected_set = set(expected)
-        existing = {
-            (t.prompt_id, t.label_id): t
-            for t in self.tasks.all()
-        }
+        existing = {(t.prompt_id, t.label_id): t for t in self.tasks.all()}
 
         # Delete tasks no longer expected (keep in-progress and awaiting-input)
         keep_statuses = (Task.Status.IN_PROGRESS, Task.Status.AWAITING_INPUT)
         to_delete = [
-            t.id for key, t in existing.items()
+            t.id
+            for key, t in existing.items()
             if key not in expected_set and t.status not in keep_statuses
         ]
         if to_delete:
@@ -175,9 +175,7 @@ class Project(Base):
         if to_create:
             Task.objects.bulk_create(to_create, ignore_conflicts=True)
 
-        return list(
-            self.tasks.select_related("label").order_by("created_at")
-        )
+        return list(self.tasks.select_related("label").order_by("created_at"))
 
 
 class Document(Base):
@@ -331,7 +329,11 @@ class Task(Base):
     )
     prompt_id = models.CharField(max_length=255)
     label = models.ForeignKey(
-        Label, on_delete=models.CASCADE, null=True, blank=True, related_name="tasks"
+        Label,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="tasks",
     )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING

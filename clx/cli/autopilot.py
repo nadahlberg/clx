@@ -11,7 +11,9 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     handler = logging.StreamHandler()
     handler.setFormatter(
-        logging.Formatter("%(asctime)s [autopilot] %(message)s", datefmt="%H:%M:%S")
+        logging.Formatter(
+            "%(asctime)s [autopilot] %(message)s", datefmt="%H:%M:%S"
+        )
     )
     logger.addHandler(handler)
 
@@ -30,7 +32,9 @@ def _resolve_prompt(task):
     from clx.app.prompts import prompt_registry
 
     try:
-        prompt = Prompt.objects.get(project=task.project, prompt_id=task.prompt_id)
+        prompt = Prompt.objects.get(
+            project=task.project, prompt_id=task.prompt_id
+        )
         return prompt.name, prompt.content
     except Prompt.DoesNotExist:
         pass
@@ -144,7 +148,10 @@ def _process_cycle():
         # thread doesn't already have an active task.
         active_labels = set(
             project.tasks.filter(
-                status__in=[Task.Status.IN_PROGRESS, Task.Status.AWAITING_INPUT]
+                status__in=[
+                    Task.Status.IN_PROGRESS,
+                    Task.Status.AWAITING_INPUT,
+                ]
             ).values_list("label_id", flat=True)
         )
         task = (

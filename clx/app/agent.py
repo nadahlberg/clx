@@ -9,7 +9,6 @@ from clx.app.tools import (
     Annotate,
     AskUser,
     CompactMemory,
-    CompleteTask,
     Search,
     UpdateLabelInstructions,
     UpdateProjectInstructions,
@@ -164,8 +163,7 @@ class CLXAgent(Agent):
 
             if response.get("tool_calls"):
                 tool_names = {
-                    tc["function"]["name"]
-                    for tc in response["tool_calls"]
+                    tc["function"]["name"] for tc in response["tool_calls"]
                 }
                 if "CompleteTask" in tool_names:
                     return "completed"

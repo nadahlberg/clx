@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Label, Project, Prompt, Task, Thread
+from .models import Label, Project, Prompt, Thread
 
 DOCS_PER_PAGE = 100
 
@@ -431,7 +431,9 @@ def _task_json(t):
         "id": str(t.id),
         "prompt_id": t.prompt_id,
         "prompt_name": entry.get("name", t.prompt_id),
-        "label": {"id": str(t.label.id), "name": t.label.name} if t.label else None,
+        "label": {"id": str(t.label.id), "name": t.label.name}
+        if t.label
+        else None,
         "status": t.status,
     }
 
@@ -483,7 +485,9 @@ def label_threads_api(request, project_id, label_id):
         )
     # Sort autopilot thread first.
     result.sort(key=lambda t: (not t["is_autopilot"], t["updated_at"]))
-    return JsonResponse({"threads": result, "autopilot_thread_id": autopilot_id})
+    return JsonResponse(
+        {"threads": result, "autopilot_thread_id": autopilot_id}
+    )
 
 
 @csrf_exempt
@@ -574,12 +578,16 @@ def send_message_api(request, project_id, thread_id):
             status=423,
         )
 
-    from .agent import CLXAgent
-    from .models import Message as MessageModel
     from clx.llm.agent import message_tokens
 
+    from .agent import CLXAgent
+    from .models import Message as MessageModel
+
     # If this is an autopilot thread, just save the message — don't run the agent.
-    is_autopilot = hasattr(thread.label, 'autopilot_thread') and thread.label.autopilot_thread_id == thread.id
+    is_autopilot = (
+        hasattr(thread.label, "autopilot_thread")
+        and thread.label.autopilot_thread_id == thread.id
+    )
     if is_autopilot:
         msg_data = {"role": "user", "content": content}
         MessageModel.objects.create(
