@@ -146,7 +146,7 @@ class CLXAgent(Agent):
         Returns 'completed' or 'awaiting_input'.
         Pre-compacts if token count exceeds 100k.
         """
-        COMPACT_THRESHOLD = 100_000
+        COMPACT_THRESHOLD = 50_000
 
         # Check if compaction is needed before running.
         if self.active_token_count() > COMPACT_THRESHOLD:
