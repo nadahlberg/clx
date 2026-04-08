@@ -24,6 +24,7 @@
          editingLabelInstructions: false,
          filterLabelOnly: false,
          filterAnnotation: null,
+         promptDropdownOpen: false,
          prompts: [],
          editingPrompt: null,
          promptResetTarget: null,
@@ -659,13 +660,33 @@
                                     </template>
                                 </div>
                             </div>
-                            <!-- Send button -->
-                            <button @click="sendMessage()"
-                                    :disabled="!chatInput.trim() || chatSending"
-                                    class="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
-                                    :class="chatInput.trim() && !chatSending ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-slate-700 text-slate-500 cursor-not-allowed'">
-                                <i class="fas fa-arrow-up text-xs"></i>
-                            </button>
+                            <!-- Prompt selector & Send button -->
+                            <div class="flex items-center gap-1.5">
+                                <div class="relative">
+                                    <button @click="promptDropdownOpen = !promptDropdownOpen"
+                                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors"
+                                            title="Insert prompt">
+                                        <i class="fas fa-bolt text-xs"></i>
+                                    </button>
+                                    <div x-show="promptDropdownOpen" x-cloak
+                                         @click.outside="promptDropdownOpen = false"
+                                         class="absolute bottom-full right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-20 min-w-[200px] max-h-48 overflow-y-auto">
+                                        <template x-for="prompt in prompts" :key="prompt.id">
+                                            <button @click="chatInput = prompt.content; promptDropdownOpen = false; $nextTick(() => { const ta = document.getElementById('chat-input'); if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; } })"
+                                                    class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors">
+                                                <span x-text="prompt.name"></span>
+                                            </button>
+                                        </template>
+                                        <div x-show="prompts.length === 0" class="px-3 py-2 text-xs text-slate-500">No prompts</div>
+                                    </div>
+                                </div>
+                                <button @click="sendMessage()"
+                                        :disabled="!chatInput.trim() || chatSending"
+                                        class="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
+                                        :class="chatInput.trim() && !chatSending ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-slate-700 text-slate-500 cursor-not-allowed'">
+                                    <i class="fas fa-arrow-up text-xs"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
