@@ -56,7 +56,7 @@ class Search(Tool):
         doc_ids = [str(r[0]) for r in rows]
         searches = agent.state.setdefault("searches", {})
         searches[search_id] = {
-            "query": self.query.model_dump(),
+            "query": self.query.model_dump() if self.query else None,
             "num_results": num_results,
             "from_training_set": self.from_training_set,
             "result_count": len(rows),
