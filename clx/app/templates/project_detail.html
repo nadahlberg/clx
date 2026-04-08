@@ -426,12 +426,20 @@
                 <template x-for="thread in threads" :key="thread.id">
                     <div @click="selectThread(thread)"
                          class="w-full px-4 py-3 text-left border-b border-slate-800/60 hover:bg-slate-800/50 transition-colors cursor-pointer flex items-center gap-2"
-                         :class="activeThread && activeThread.id === thread.id ? 'bg-slate-800/50 border-l-2 border-l-indigo-500' : ''">
+                         :class="[
+                             activeThread && activeThread.id === thread.id ? 'bg-slate-800/50 border-l-2 border-l-indigo-500' : '',
+                             thread.is_autopilot ? 'border-b-slate-700' : ''
+                         ]">
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs text-slate-300 truncate" x-text="thread.preview || 'New chat'"></p>
+                            <div class="flex items-center gap-1.5">
+                                <i x-show="thread.is_autopilot" class="fas fa-bolt text-[10px] text-amber-500"></i>
+                                <p class="text-xs truncate"
+                                   :class="thread.is_autopilot ? 'text-amber-400 font-medium' : 'text-slate-300'"
+                                   x-text="thread.is_autopilot ? 'Autopilot' : (thread.preview || 'New chat')"></p>
+                            </div>
                             <p class="text-xs text-slate-500 mt-0.5" x-text="thread.model"></p>
                         </div>
-                        <button @click.stop="threadToDelete = thread"
+                        <button x-show="!thread.is_autopilot" @click.stop="threadToDelete = thread"
                                 class="shrink-0 text-slate-600 hover:text-red-400 transition-colors">
                             <i class="fas fa-xmark text-xs"></i>
                         </button>

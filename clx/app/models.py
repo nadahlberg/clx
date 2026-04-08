@@ -222,6 +222,13 @@ class Label(Base):
     )
     name = models.CharField(max_length=255)
     instructions = models.TextField(blank=True, default="")
+    autopilot_thread = models.ForeignKey(
+        "Thread",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
 
     class Meta:
         constraints = [

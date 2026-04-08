@@ -440,6 +440,12 @@ def label_threads_api(request, project_id, label_id):
     """GET: list threads for a label with latest message preview."""
     project = get_object_or_404(Project, id=project_id)
     label = get_object_or_404(Label, id=label_id, project=project)
+    # Lazily create the autopilot thread.
+    if not label.autopilot_thread_id:
+        autopilot = Thread.objects.create(label=label)
+        label.autopilot_thread = autopilot
+        label.save(update_fields=["autopilot_thread", "updated_at"])
+    autopilot_id = str(label.autopilot_thread_id)
     threads = label.threads.order_by("-updated_at")
     result = []
     for t in threads:
@@ -453,9 +459,12 @@ def label_threads_api(request, project_id, label_id):
                 "model": t.model,
                 "preview": preview,
                 "updated_at": t.updated_at.isoformat(),
+                "is_autopilot": str(t.id) == autopilot_id,
             }
         )
-    return JsonResponse({"threads": result})
+    # Sort autopilot thread first.
+    result.sort(key=lambda t: (not t["is_autopilot"], t["updated_at"]))
+    return JsonResponse({"threads": result, "autopilot_thread_id": autopilot_id})
 
 
 @csrf_exempt
