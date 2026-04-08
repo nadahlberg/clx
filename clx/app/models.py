@@ -117,6 +117,65 @@ class Project(Base):
             **kwargs,
         )
 
+    def update_tasks(self):
+        """Sync tasks based on current project/label state.
+
+        Rules:
+        - No project instructions → project_understanding task (no label)
+        - Has project instructions but label lacks instructions → label_understanding per label
+        - Both have instructions but label has no training examples → sampling_strategy per label
+        - Label has unannotated training examples → annotate per label
+        """
+        from django.db.models import Count, Q
+
+        expected = []  # list of (prompt_id, label_id | None)
+
+        if not self.instructions.strip():
+            expected.append(("project_understanding", None))
+        else:
+            labels = list(self.labels.all())
+            for label in labels:
+                if not label.instructions.strip():
+                    expected.append(("label_understanding", label.id))
+                else:
+                    ld_stats = LabelDocument.objects.filter(label=label).aggregate(
+                        total=Count("id"),
+                        annotated=Count(
+                            "id",
+                            filter=Q(annotations__source="agent"),
+                        ),
+                    )
+                    if ld_stats["total"] == 0:
+                        expected.append(("sampling_strategy", label.id))
+                    elif ld_stats["annotated"] < ld_stats["total"]:
+                        expected.append(("annotate", label.id))
+
+        expected_set = set(expected)
+        existing = {
+            (t.prompt_id, t.label_id): t
+            for t in self.tasks.all()
+        }
+
+        # Delete tasks no longer expected
+        to_delete = [
+            t.id for key, t in existing.items() if key not in expected_set
+        ]
+        if to_delete:
+            Task.objects.filter(id__in=to_delete).delete()
+
+        # Create missing tasks
+        to_create = [
+            Task(project=self, prompt_id=pid, label_id=lid)
+            for pid, lid in expected
+            if (pid, lid) not in existing
+        ]
+        if to_create:
+            Task.objects.bulk_create(to_create, ignore_conflicts=True)
+
+        return list(
+            self.tasks.select_related("label").order_by("created_at")
+        )
+
 
 class Document(Base):
     """Model for documents within a project."""
@@ -244,6 +303,33 @@ class ClassificationAnnotation(Base):
             models.UniqueConstraint(
                 fields=["label_document", "source"],
                 name="annotation_labeldoc_source_uniq",
+            )
+        ]
+
+
+class Task(Base):
+    """A pending task for a project (e.g. 'annotate label X')."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        IN_PROGRESS = "in_progress"
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="tasks"
+    )
+    prompt_id = models.CharField(max_length=255)
+    label = models.ForeignKey(
+        Label, on_delete=models.CASCADE, null=True, blank=True, related_name="tasks"
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "prompt_id", "label"],
+                name="task_project_prompt_label_uniq",
             )
         ]
 

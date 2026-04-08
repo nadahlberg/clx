@@ -70,6 +70,10 @@ urlpatterns = [
         views.delete_label_api,
     ),
     path(
+        "api/projects/<str:project_id>/tasks/update",
+        views.update_tasks_api,
+    ),
+    path(
         "api/projects/<str:project_id>/labels/<str:label_id>/threads",
         views.label_threads_api,
     ),

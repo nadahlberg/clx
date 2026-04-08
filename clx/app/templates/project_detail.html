@@ -4,7 +4,8 @@
 
 {% block content %}
 <div x-data="{
-         activeTab: 'labels',
+         activeTab: 'overview',
+         tasks: [],
          documents: [],
          page: 1,
          hasNext: false,
@@ -305,6 +306,11 @@
                  .then(r => r.json())
                  .then(data => { this.prompts = data.prompts; });
          },
+         fetchTasks() {
+             fetch('/api/projects/{{ project.id }}/tasks/update', { method: 'POST' })
+                 .then(r => r.json())
+                 .then(data => { this.tasks = data.tasks; });
+         },
          savePrompt(prompt) {
              fetch('/api/projects/{{ project.id }}/prompts/' + prompt.id + '/update', {
                  method: 'POST',
@@ -369,7 +375,7 @@
              }
          }
      }"
-     x-init="fetchDocs(); fetchLabels(); fetchPrompts()"
+     x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks()"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
@@ -384,7 +390,7 @@
         <!-- Tabs (centered) -->
         <div class="flex-1 flex items-stretch justify-center gap-3">
             <template x-for="tab in [
-                {id: 'labels', icon: 'fa-tags', label: 'Labels'},
+                {id: 'overview', icon: 'fa-list-check', label: 'Overview'},
                 {id: 'search', icon: 'fa-search', label: 'Search'},
                 {id: 'agent', icon: 'fa-robot', label: 'Agent'},
                 {id: 'settings', icon: 'fa-gear', label: 'Settings'}
@@ -455,8 +461,38 @@
                 </div>
             </div>
 
-            <!-- Search/Labels tabs: Filters panel -->
-            <div x-show="activeTab === 'search' || activeTab === 'labels'" x-cloak class="p-4 scrollable-panel scrollable-dark">
+            <!-- Overview tab: Tasks panel -->
+            <div x-show="activeTab === 'overview'" x-cloak class="flex-1 flex flex-col min-h-0 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Next Up</h3>
+                    <button @click="fetchTasks()"
+                            class="text-slate-500 hover:text-slate-300 transition-colors"
+                            title="Refresh tasks">
+                        <i class="fas fa-arrows-rotate text-xs"></i>
+                    </button>
+                </div>
+                <div class="space-y-1.5">
+                    <template x-for="task in tasks" :key="task.id">
+                        <div class="px-3 py-2.5 rounded-md bg-slate-800/50 border border-slate-800 hover:border-slate-700 transition-colors">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-medium text-slate-300" x-text="task.prompt_name"></span>
+                                <span x-show="task.status === 'in_progress'"
+                                      class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600/30 text-indigo-400 font-medium">In Progress</span>
+                            </div>
+                            <div x-show="task.label" class="flex items-center gap-1.5">
+                                <i class="fas fa-tag text-[10px] text-slate-600"></i>
+                                <span class="text-xs text-slate-500" x-text="task.label?.name"></span>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tasks.length === 0" class="text-center py-6">
+                        <span class="text-xs text-slate-600">No tasks — all caught up!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search tab: Filters panel -->
+            <div x-show="activeTab === 'search'" x-cloak class="p-4 scrollable-panel scrollable-dark">
                 <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Filters</h3>
                 <div class="flex items-center justify-between mb-1">
                     <label class="text-xs font-medium text-slate-500">Query</label>
@@ -808,8 +844,8 @@
                 </div>
             </div>
 
-            <!-- Tab: Labels -->
-            <div x-show="activeTab === 'labels'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900 relative">
+            <!-- Tab: Overview -->
+            <div x-show="activeTab === 'overview'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900 relative">
                 <!-- New label button (floating) -->
                 <button @click="newLabelName = ''; showCreateLabelModal = true"
                         class="absolute top-3 right-3 z-10 px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors shadow-md border border-slate-700"

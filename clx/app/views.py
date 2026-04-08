@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Label, Project, Prompt, Thread
+from .models import Label, Project, Prompt, Task, Thread
 
 DOCS_PER_PAGE = 100
 
@@ -411,6 +411,28 @@ def delete_label_api(request, project_id, label_id):
         project.active_label = new_active
         project.save(update_fields=["active_label", "updated_at"])
     return JsonResponse({"ok": True})
+
+
+def _task_json(t):
+    from .prompts import prompt_registry
+
+    entry = prompt_registry.get(t.prompt_id, {})
+    return {
+        "id": str(t.id),
+        "prompt_id": t.prompt_id,
+        "prompt_name": entry.get("name", t.prompt_id),
+        "label": {"id": str(t.label.id), "name": t.label.name} if t.label else None,
+        "status": t.status,
+    }
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_tasks_api(request, project_id):
+    """POST: recalculate and return project tasks."""
+    project = get_object_or_404(Project, id=project_id)
+    tasks = project.update_tasks()
+    return JsonResponse({"tasks": [_task_json(t) for t in tasks]})
 
 
 @require_GET
