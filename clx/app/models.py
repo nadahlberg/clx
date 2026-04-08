@@ -157,9 +157,10 @@ class Project(Base):
             for t in self.tasks.all()
         }
 
-        # Delete tasks no longer expected
+        # Delete tasks no longer expected (keep in-progress ones)
         to_delete = [
-            t.id for key, t in existing.items() if key not in expected_set
+            t.id for key, t in existing.items()
+            if key not in expected_set and t.status != Task.Status.IN_PROGRESS
         ]
         if to_delete:
             Task.objects.filter(id__in=to_delete).delete()
