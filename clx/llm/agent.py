@@ -15,6 +15,7 @@ def count_tokens(text: str) -> int:
     """Count tokens in text using cl100k_base encoding."""
     return len(_encoding.encode(text))
 
+
 logger = logging.getLogger("clx.llm")
 logger.setLevel(logging.DEBUG)
 if not logger.handlers:
