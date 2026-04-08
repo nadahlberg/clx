@@ -117,6 +117,10 @@ def _process_task(task, resume=False):
         thread.save(update_fields=["autopilot_locked", "updated_at"])
 
 
+# Track last-processed label per project for round-robin scheduling.
+_last_label = {}  # project_id -> label_id
+
+
 def _process_cycle():
     """Run one autopilot cycle across all enabled projects."""
     from clx.app.models import Project, Task
@@ -138,6 +142,7 @@ def _process_cycle():
             ).exists()
             if new_msgs:
                 _process_task(task, resume=True)
+                _last_label[str(project.id)] = str(task.label_id)
                 project.refresh_from_db(fields=["autopilot_enabled"])
                 if not project.autopilot_enabled:
                     break
@@ -149,6 +154,7 @@ def _process_cycle():
 
         # Pick the next pending task, but only if its label's autopilot
         # thread doesn't already have an active task.
+        # Round-robin: prefer labels we haven't worked on recently.
         active_labels = set(
             project.tasks.filter(
                 status__in=[
@@ -157,19 +163,31 @@ def _process_cycle():
                 ]
             ).values_list("label_id", flat=True)
         )
-        task = (
+        candidates = list(
             project.tasks.filter(status=Task.Status.PENDING)
             .exclude(label_id__in=active_labels)
             .order_by("created_at")
-            .first()
         )
-        if task:
-            updated = Task.objects.filter(
-                id=task.id, status=Task.Status.PENDING
-            ).update(status=Task.Status.IN_PROGRESS)
-            if updated:
-                task.refresh_from_db()
-                _process_task(task)
+        if not candidates:
+            continue
+
+        # Pick the first candidate whose label differs from last-processed.
+        last = _last_label.get(str(project.id))
+        task = None
+        for c in candidates:
+            if str(c.label_id) != last:
+                task = c
+                break
+        if task is None:
+            task = candidates[0]
+
+        updated = Task.objects.filter(
+            id=task.id, status=Task.Status.PENDING
+        ).update(status=Task.Status.IN_PROGRESS)
+        if updated:
+            task.refresh_from_db()
+            _last_label[str(project.id)] = str(task.label_id)
+            _process_task(task)
 
 
 def _cleanup():
