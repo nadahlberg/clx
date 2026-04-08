@@ -157,10 +157,11 @@ class Project(Base):
             for t in self.tasks.all()
         }
 
-        # Delete tasks no longer expected (keep in-progress ones)
+        # Delete tasks no longer expected (keep in-progress and awaiting-input)
+        keep_statuses = (Task.Status.IN_PROGRESS, Task.Status.AWAITING_INPUT)
         to_delete = [
             t.id for key, t in existing.items()
-            if key not in expected_set and t.status != Task.Status.IN_PROGRESS
+            if key not in expected_set and t.status not in keep_statuses
         ]
         if to_delete:
             Task.objects.filter(id__in=to_delete).delete()
@@ -272,6 +273,7 @@ class Thread(Base):
     )
     state = models.JSONField(default=dict, blank=True)
     total_cost = models.FloatField(default=0.0)
+    autopilot_locked = models.BooleanField(default=False)
 
 
 class LabelDocument(Base):
@@ -322,6 +324,7 @@ class Task(Base):
     class Status(models.TextChoices):
         PENDING = "pending"
         IN_PROGRESS = "in_progress"
+        AWAITING_INPUT = "awaiting_input"
 
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="tasks"

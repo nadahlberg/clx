@@ -253,3 +253,14 @@ class AskUser(Tool):
 
     def __call__(self, agent):
         return "This question will be presented to the user."
+
+
+class CompleteTask(Tool):
+    """Mark the current task as complete. Call this when you have fully accomplished the task objective."""
+
+    summary: str = Field(
+        description="A brief summary of what was accomplished."
+    )
+
+    def __call__(self, agent):
+        return self.summary

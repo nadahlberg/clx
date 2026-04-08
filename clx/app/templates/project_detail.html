@@ -75,6 +75,9 @@
                  .then(data => {
                      this.chatMessages = data.messages.map(m => m.data).filter(d => d.role !== 'system');
                      this.threadUsage = data.usage;
+                     if (this.activeThread && this.activeThread.id === thread.id) {
+                         this.activeThread.autopilot_locked = data.autopilot_locked;
+                     }
                      this.$nextTick(() => { this.scrollChat(); });
                  });
          },
@@ -218,8 +221,8 @@
                  .then(data => { this.labelStats = data; });
          },
          fetchThreads() {
-             if (!this.activeLabel) { this.threads = []; return; }
-             fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/threads')
+             if (!this.activeLabel) { this.threads = []; return Promise.resolve(); }
+             return fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/threads')
                  .then(r => r.json())
                  .then(data => { this.threads = data.threads; });
          },
@@ -315,6 +318,32 @@
                  .then(data => { this.tasks = data.tasks; this.tasksLoading = false; })
                  .catch(() => { this.tasksLoading = false; });
          },
+         fetchTasksQuiet() {
+             fetch('/api/projects/{{ project.id }}/tasks')
+                 .then(r => r.json())
+                 .then(data => { this.tasks = data.tasks; });
+         },
+         navigateToTask(task) {
+             const targetLabelId = task.label ? task.label.id : (this.activeLabel ? this.activeLabel.id : null);
+             if (!targetLabelId) return;
+             const label = this.labels.find(l => l.id === targetLabelId);
+             if (!label) return;
+             if (!this.activeLabel || this.activeLabel.id !== label.id) {
+                 this.activeLabel = label;
+                 this._savedLabelName = label.name;
+                 this._savedLabelInstructions = label.instructions || '';
+                 this.activeThread = null;
+                 this.chatMessages = [];
+                 this.threadUsage = null;
+                 fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
+                 this.fetchLabelStats();
+             }
+             this.activeTab = 'agent';
+             this.fetchThreads().then(() => {
+                 const apThread = this.threads.find(t => t.is_autopilot);
+                 if (apThread) this.selectThread(apThread);
+             });
+         },
          savePrompt(prompt) {
              fetch('/api/projects/{{ project.id }}/prompts/' + prompt.id + '/update', {
                  method: 'POST',
@@ -379,7 +408,8 @@
              }
          }
      }"
-     x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks()"
+     x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks();
+              setInterval(() => { if (autopilotEnabled) { fetchTasksQuiet(); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { chatMessages = data.messages.map(m => m.data).filter(d => d.role !== 'system'); threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; $nextTick(() => { scrollChat(); }); } }); } } }, 5000)"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
@@ -491,11 +521,18 @@
                 </div>
                 <div class="space-y-1.5">
                     <template x-for="task in tasks" :key="task.id">
-                        <div class="px-3 py-2.5 rounded-md bg-slate-800/50 border border-slate-800 hover:border-slate-700 transition-colors">
+                        <div @click="navigateToTask(task)"
+                             class="px-3 py-2.5 rounded-md bg-slate-800/50 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer">
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="text-xs font-medium text-slate-300" x-text="task.prompt_name"></span>
                                 <span x-show="task.status === 'in_progress'"
-                                      class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600/30 text-indigo-400 font-medium">In Progress</span>
+                                      class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600/30 text-indigo-400 font-medium">
+                                    <i class="fas fa-spinner fa-spin mr-0.5"></i> Working
+                                </span>
+                                <span x-show="task.status === 'awaiting_input'"
+                                      class="text-[10px] px-1.5 py-0.5 rounded bg-amber-600/30 text-amber-400 font-medium animate-pulse">
+                                    <i class="fas fa-comment-dots mr-0.5"></i> Needs Input
+                                </span>
                             </div>
                             <div x-show="task.label" class="flex items-center gap-1.5">
                                 <i class="fas fa-tag text-[10px] text-slate-600"></i>
@@ -740,8 +777,16 @@
                         </div>
                     </div>
                 </div>
+                <!-- Autopilot lock banner -->
+                <div x-show="activeThread && activeThread.autopilot_locked" x-cloak
+                     class="shrink-0 px-4 py-2 bg-amber-950/30 border-b border-amber-800/30 text-center">
+                    <span class="text-xs text-amber-400">
+                        <i class="fas fa-lock mr-1"></i>
+                        Autopilot is working on this thread. Chat is temporarily disabled.
+                    </span>
+                </div>
                 <!-- Chat input -->
-                <div class="shrink-0 px-4 pb-4 pt-2">
+                <div class="shrink-0 px-4 pb-4 pt-2" :class="activeThread && activeThread.autopilot_locked ? 'opacity-50 pointer-events-none' : ''">
                     <div class="border border-slate-700 rounded-lg bg-slate-800 focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 flex flex-col">
                         <div class="max-h-40 overflow-y-auto">
                             <textarea id="chat-input"
@@ -750,6 +795,7 @@
                                       @input="const wrap = $el.parentElement; const st = wrap.scrollTop; $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'; wrap.scrollTop = st"
                                       rows="1"
                                       placeholder="Send a message..."
+                                      :disabled="activeThread && activeThread.autopilot_locked"
                                       class="w-full px-3 pt-2.5 pb-1 text-sm text-slate-200 resize-none overflow-hidden focus:outline-none bg-transparent placeholder:text-slate-600"></textarea>
                         </div>
                         <div class="flex items-center justify-between px-2 pb-2">

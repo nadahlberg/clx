@@ -436,6 +436,14 @@ def _task_json(t):
     }
 
 
+@require_GET
+def tasks_api(request, project_id):
+    """GET: return current tasks without recalculating."""
+    project = get_object_or_404(Project, id=project_id)
+    tasks = list(project.tasks.select_related("label").order_by("created_at"))
+    return JsonResponse({"tasks": [_task_json(t) for t in tasks]})
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def update_tasks_api(request, project_id):
@@ -470,6 +478,7 @@ def label_threads_api(request, project_id, label_id):
                 "preview": preview,
                 "updated_at": t.updated_at.isoformat(),
                 "is_autopilot": str(t.id) == autopilot_id,
+                "autopilot_locked": t.autopilot_locked,
             }
         )
     # Sort autopilot thread first.
@@ -531,6 +540,7 @@ def thread_messages_api(request, project_id, thread_id):
                 "total_tokens": total_tokens,
                 "total_cost": thread.total_cost,
             },
+            "autopilot_locked": thread.autopilot_locked,
         }
     )
 
@@ -558,6 +568,11 @@ def send_message_api(request, project_id, thread_id):
     content = data.get("content", "").strip()
     if not content:
         return JsonResponse({"error": "content is required"}, status=400)
+    if thread.autopilot_locked:
+        return JsonResponse(
+            {"error": "This thread is currently being used by autopilot."},
+            status=423,
+        )
 
     from .agent import CLXAgent
 

@@ -1,5 +1,6 @@
 import click
 
+from .autopilot import autopilot
 from .manage import manage
 
 
@@ -10,3 +11,4 @@ def cli():
 
 
 cli.add_command(manage)
+cli.add_command(autopilot)
