@@ -575,23 +575,30 @@ def send_message_api(request, project_id, thread_id):
         )
 
     from .agent import CLXAgent
+    from .models import Message as MessageModel
+    from clx.llm.agent import message_tokens
 
-    # Check if this thread has an active autopilot task.
-    active_task = Task.objects.filter(
-        label=thread.label,
-        status=Task.Status.AWAITING_INPUT,
-    ).first()
-    extra_tools = []
-    if active_task:
-        from .tools import CompleteTask
+    # If this is an autopilot thread, just save the message — don't run the agent.
+    is_autopilot = hasattr(thread.label, 'autopilot_thread') and thread.label.autopilot_thread_id == thread.id
+    if is_autopilot:
+        msg_data = {"role": "user", "content": content}
+        MessageModel.objects.create(
+            thread=thread,
+            data=msg_data,
+            num_tokens=message_tokens(msg_data),
+        )
+        total_tokens = _active_token_count(thread)
+        return JsonResponse(
+            {
+                "messages": [],
+                "usage": {
+                    "total_tokens": total_tokens,
+                    "total_cost": thread.total_cost,
+                },
+            }
+        )
 
-        extra_tools = [CompleteTask]
-
-    kwargs = {}
-    if extra_tools:
-        kwargs["tools"] = CLXAgent.default_tools + extra_tools
-
-    agent = CLXAgent(thread, **kwargs)
+    agent = CLXAgent(thread)
     msg_count_before = len(agent.messages)
     agent.run(content)
     # Return all new messages (skipping the user message already shown)
@@ -600,20 +607,6 @@ def send_message_api(request, project_id, thread_id):
         for m in agent.messages[msg_count_before + 1 :]
         if m.get("role") != "system"
     ]
-
-    # If there was an active task, check if the agent resolved it.
-    if active_task:
-        tool_names = set()
-        for m in new_messages:
-            for tc in m.get("tool_calls") or []:
-                tool_names.add(tc["function"]["name"])
-        if "CompleteTask" in tool_names:
-            active_task.delete()
-            project.update_tasks()
-        else:
-            # Task not completed — reset to pending so autopilot can nudge.
-            active_task.status = Task.Status.PENDING
-            active_task.save(update_fields=["status", "updated_at"])
 
     thread.refresh_from_db(fields=["total_cost"])
     total_tokens = _active_token_count(thread)

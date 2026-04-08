@@ -83,13 +83,10 @@ def _process_task(task, resume=False):
         tools = CLXAgent.default_tools + [CompleteTask]
         agent = CLXAgent(thread, tools=tools)
 
-        # Determine the message to send.
+        # For resume, the user's message is already in the thread history
+        # (saved by send_message_api). Pass None so the agent just responds.
         if resume:
-            # User replied — just nudge the agent to continue.
-            message = (
-                "The user has responded above. Continue working on your task. "
-                "If done, call CompleteTask."
-            )
+            message = None
         else:
             prompt_name, prompt_content = _resolve_prompt(task)
             message = TASK_PROMPT_TEMPLATE.format(
@@ -121,12 +118,9 @@ def _process_cycle():
     for project in projects:
         project.update_tasks()
 
-        # Check for awaiting_input tasks where new messages appeared
-        # (user replied via the web UI, which reset the task to pending,
-        # OR the user replied but the agent didn't call a terminal tool
-        # and the task was set back to pending by send_message_api).
-        # We detect this by checking if there are messages after the task
-        # was last updated (i.e. the user interacted since the task paused).
+        # Check for awaiting_input tasks where the user has replied.
+        # The web UI saves user messages directly without running the agent,
+        # so we just check for new messages since the task paused.
         for task in project.tasks.filter(status=Task.Status.AWAITING_INPUT):
             thread = _get_thread_for_task(task)
             if not thread:
