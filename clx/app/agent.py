@@ -144,20 +144,22 @@ class CLXAgent(Agent):
         """Run agent in autopilot mode.
 
         Returns 'completed' or 'awaiting_input'.
-        Pre-compacts if token count exceeds 100k.
+        Compacts mid-run if token count exceeds threshold.
         """
         COMPACT_THRESHOLD = 50_000
-
-        # Check if compaction is needed before running.
-        if self.active_token_count() > COMPACT_THRESHOLD:
-            logger.info("Token count exceeds 100k, compacting memory...")
-            self.run(
-                "Compact your memory now. Write a detailed summary "
-                "of the full conversation so far."
-            )
+        COMPACT_MSG = (
+            "Compact your memory now. Write a detailed summary of the full "
+            "conversation so far. Make sure to keep track of your current "
+            "task instructions and progress in your compaction summary."
+        )
 
         # Run steps until CompleteTask is called or the turn ends.
         for _ in range(self.max_steps):
+            # Check if compaction is needed before each step.
+            if self.active_token_count() > COMPACT_THRESHOLD:
+                logger.info("Token count exceeds 50k, compacting mid-run...")
+                self.run(COMPACT_MSG)
+
             response = self.step(message, call_tools=True)
             message = None
 
