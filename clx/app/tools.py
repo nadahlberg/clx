@@ -10,7 +10,11 @@ _su = ShortUUID()
 
 
 class Search(Tool):
-    """Search documents in the project using a structured query. Build queries using Contains, StartsWith, Not, Or, and And nodes. All text matching is case-insensitive."""
+    """Search documents in the project using a structured query.
+
+    Build queries using Contains, StartsWith, Not, Or, and And nodes.
+    All text matching is case-insensitive.
+    """
 
     query: Query | None = Field(
         default=None,
@@ -73,7 +77,12 @@ class Search(Tool):
 
 
 class UpdateLabelInstructions(Tool):
-    """Update the instructions for the current label. Use 'append' to add new content to the end of existing instructions, or 'replace' to rewrite them entirely. You can see the current instructions in your system prompt."""
+    """Update the instructions for the current label.
+
+    Use 'append' to add new content to the end of existing instructions,
+    or 'replace' to rewrite them entirely. You can see the current
+    instructions in your system prompt.
+    """
 
     mode: Literal["append", "replace"] = Field(
         description="'append' to add to existing instructions, 'replace' to overwrite"
@@ -98,7 +107,12 @@ class UpdateLabelInstructions(Tool):
 
 
 class UpdateProjectInstructions(Tool):
-    """Update the project-level instructions. Use 'append' to add new content to the end of existing instructions, or 'replace' to rewrite them entirely. You can see the current instructions in your system prompt."""
+    """Update the project-level instructions.
+
+    Use 'append' to add new content to the end of existing instructions,
+    or 'replace' to rewrite them entirely. You can see the current
+    instructions in your system prompt.
+    """
 
     mode: Literal["append", "replace"] = Field(
         description="'append' to add to existing instructions, 'replace' to overwrite"
@@ -123,7 +137,14 @@ class UpdateProjectInstructions(Tool):
 
 
 class AddTrainingExamples(Tool):
-    """Add documents to the current label's training set. These become reference examples for classification. Preferred: pass search_id from a previous Search call — this re-runs the query so you can sample more documents than were originally returned (use num_docs to control how many). Alternatively, pass explicit document_ids. Do not pass both."""
+    """Add documents to the current label's training set.
+
+    These become reference examples for classification. Preferred: pass
+    search_id from a previous Search call — this re-runs the query so you
+    can sample more documents than were originally returned (use num_docs
+    to control how many). Alternatively, pass explicit document_ids.
+    Do not pass both.
+    """
 
     search_id: str | None = Field(
         default=None,
@@ -195,7 +216,11 @@ class AnnotationItem(BaseModel):
 
 
 class Annotate(Tool):
-    """Annotate training examples for the current label. Each annotation classifies a document as 'yes', 'no', or 'skip'. If an annotation already exists for a document it will be updated."""
+    """Annotate training examples for the current label.
+
+    Each annotation classifies a document as 'yes', 'no', or 'skip'.
+    If an annotation already exists for a document it will be updated.
+    """
 
     annotations: list[AnnotationItem] = Field(
         description="List of annotations to create or update."
@@ -243,7 +268,14 @@ class Annotate(Tool):
 
 
 class CompactMemory(Tool):
-    """Compact the conversation by replacing prior messages with a summary. ONLY call this tool when the user explicitly asks to compact or summarize the conversation. Write a detailed, verbose summary that captures all important context, decisions, findings, and state so nothing is lost. Try to keep the summary under 2500 tokens and avoid repeating content in your system prompt."""
+    """Compact the conversation by replacing prior messages with a summary.
+
+    ONLY call this tool when the user explicitly asks to compact or
+    summarize the conversation. Write a detailed, verbose summary that
+    captures all important context, decisions, findings, and state so
+    nothing is lost. Try to keep the summary under 2500 tokens and avoid
+    repeating content in your system prompt.
+    """
 
     summary: str = Field(
         description="A detailed summary of the conversation so far. Be verbose — include key findings, decisions made, tool results, instructions given, and any state the agent should remember. This will replace all prior messages."
@@ -254,7 +286,13 @@ class CompactMemory(Tool):
 
 
 class AskUser(Tool):
-    """Ask the user a question with proposed answer options. The user will pick exactly one option, so make the options mutually exclusive. Use this when you need clarification or want the user to choose between alternatives. The question and options will be presented to the user in an interactive card."""
+    """Ask the user a question with proposed answer options.
+
+    The user will pick exactly one option, so make the options mutually
+    exclusive. Use this when you need clarification or want the user to
+    choose between alternatives. The question and options will be
+    presented to the user in an interactive card.
+    """
 
     question: str = Field(description="The question to ask the user")
     options: list[str] = Field(
@@ -266,7 +304,10 @@ class AskUser(Tool):
 
 
 class CompleteTask(Tool):
-    """Mark the current task as complete. Call this when you have fully accomplished the task objective."""
+    """Mark the current task as complete.
+
+    Call this when you have fully accomplished the task objective.
+    """
 
     summary: str = Field(
         description="A brief summary of what was accomplished."
