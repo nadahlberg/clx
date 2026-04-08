@@ -146,7 +146,7 @@ class CLXAgent(Agent):
         Returns 'completed' or 'awaiting_input'.
         Compacts mid-run if token count exceeds threshold.
         """
-        COMPACT_THRESHOLD = 50_000
+        COMPACT_THRESHOLD = 25_000
         COMPACT_MSG = (
             "Compact your memory now. Write a detailed summary of the full "
             "conversation so far. Make sure to keep track of your current "
@@ -157,7 +157,7 @@ class CLXAgent(Agent):
         for _ in range(self.max_steps):
             # Check if compaction is needed before each step.
             if self.active_token_count() > COMPACT_THRESHOLD:
-                logger.info("Token count exceeds 50k, compacting mid-run...")
+                logger.info("Token count exceeds 25k, compacting mid-run...")
                 self.run(COMPACT_MSG)
 
             response = self.step(message, call_tools=True)
