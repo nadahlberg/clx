@@ -87,6 +87,9 @@ def _process_task(task, resume=False):
         tools = CLXAgent.default_tools + [CompleteTask]
         agent = CLXAgent(thread, tools=tools)
 
+        # Compact before starting/resuming the task if needed.
+        agent.compact_if_needed()
+
         # For resume, the user's message is already in the thread history
         # (saved by send_message_api). Pass None so the agent just responds.
         if resume:
