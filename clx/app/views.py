@@ -267,6 +267,16 @@ def update_project_api(request, project_id):
     )
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def toggle_autopilot_api(request, project_id):
+    """POST: toggle autopilot_enabled on a project."""
+    project = get_object_or_404(Project, id=project_id)
+    project.autopilot_enabled = not project.autopilot_enabled
+    project.save(update_fields=["autopilot_enabled", "updated_at"])
+    return JsonResponse({"autopilot_enabled": project.autopilot_enabled})
+
+
 def _prompt_json(p):
     return {
         "id": str(p.id),

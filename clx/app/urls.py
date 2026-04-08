@@ -62,6 +62,10 @@ urlpatterns = [
         views.update_project_api,
     ),
     path(
+        "api/projects/<str:project_id>/autopilot/toggle",
+        views.toggle_autopilot_api,
+    ),
+    path(
         "api/projects/<str:project_id>/delete",
         views.delete_project_api,
     ),

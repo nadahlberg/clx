@@ -17,6 +17,7 @@
          showQueryHelp: false,
          projectName: '{{ project.name|escapejs }}',
          projectInstructions: '{{ project.instructions|escapejs }}',
+         autopilotEnabled: {{ project.autopilot_enabled|yesno:"true,false" }},
          _savedProjectName: '{{ project.name|escapejs }}',
          _savedProjectInstructions: '{{ project.instructions|escapejs }}',
          _savedLabelName: null,
@@ -408,10 +409,16 @@
                 </button>
             </template>
         </div>
-        <!-- Spacer to balance the left side -->
-        <div class="shrink-0 mr-6 invisible flex items-center">
-            <i class="fas fa-chevron-left text-[10px] mr-3"></i>
-            <span class="text-sm font-semibold" x-text="projectName"></span>
+        <!-- Autopilot toggle -->
+        <div class="flex items-center shrink-0 ml-6">
+            <button @click="fetch('/api/projects/{{ project.id }}/autopilot/toggle', { method: 'POST' }).then(r => r.json()).then(data => { autopilotEnabled = data.autopilot_enabled; })"
+                    class="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md border transition-colors"
+                    :class="autopilotEnabled
+                        ? 'bg-amber-600/20 border-amber-600/50 text-amber-400 hover:bg-amber-600/30'
+                        : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700 hover:text-slate-300'">
+                <i class="fas fa-bolt text-[10px]"></i>
+                <span>Autopilot</span>
+            </button>
         </div>
     </nav>
 
