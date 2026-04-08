@@ -182,6 +182,7 @@ class Prompt(Base):
     prompt_id = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     content = models.TextField(blank=True, default="")
+    built_in = models.BooleanField(default=False)
 
     class Meta:
         constraints = [

@@ -267,6 +267,22 @@ def update_project_api(request, project_id):
     )
 
 
+def _prompt_json(p):
+    return {
+        "id": str(p.id),
+        "prompt_id": p.prompt_id,
+        "name": p.name,
+        "content": p.content,
+        "built_in": p.built_in,
+    }
+
+
+def _slugify_prompt_id(name):
+    import re
+
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+
 @require_GET
 def project_prompts_api(request, project_id):
     """GET: list prompts for a project, lazy-creating from registry."""
@@ -280,49 +296,63 @@ def project_prompts_api(request, project_id):
             prompt_id=pid,
             name=entry["name"],
             content=entry["content"],
+            built_in=True,
         )
         for pid, entry in prompt_registry.items()
         if pid not in existing
     ]
     if to_create:
         Prompt.objects.bulk_create(to_create)
-    prompts = project.prompts.order_by("created_at")
+    prompts = project.prompts.order_by("built_in", "created_at")
     return JsonResponse(
-        {
-            "prompts": [
-                {
-                    "id": str(p.id),
-                    "prompt_id": p.prompt_id,
-                    "name": p.name,
-                    "content": p.content,
-                }
-                for p in prompts
-            ]
-        }
+        {"prompts": [_prompt_json(p) for p in prompts]}
     )
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def create_prompt_api(request, project_id):
+    """POST: create a custom prompt."""
+    project = get_object_or_404(Project, id=project_id)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    name = data.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+    prompt = Prompt.objects.create(
+        project=project,
+        prompt_id=_slugify_prompt_id(name),
+        name=name,
+        content=data.get("content", ""),
+        built_in=False,
+    )
+    return JsonResponse(_prompt_json(prompt), status=201)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def update_prompt_api(request, project_id, prompt_id):
-    """POST: update a prompt's content."""
+    """POST: update a prompt's content (and name for custom prompts)."""
     project = get_object_or_404(Project, id=project_id)
     prompt = get_object_or_404(Prompt, id=prompt_id, project=project)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
+    update_fields = ["updated_at"]
     if "content" in data:
         prompt.content = data["content"]
-        prompt.save(update_fields=["content", "updated_at"])
-    return JsonResponse(
-        {
-            "id": str(prompt.id),
-            "prompt_id": prompt.prompt_id,
-            "name": prompt.name,
-            "content": prompt.content,
-        }
-    )
+        update_fields.append("content")
+    if "name" in data and not prompt.built_in:
+        name = data["name"].strip()
+        if name:
+            prompt.name = name
+            prompt.prompt_id = _slugify_prompt_id(name)
+            update_fields.extend(["name", "prompt_id"])
+    prompt.save(update_fields=update_fields)
+    return JsonResponse(_prompt_json(prompt))
 
 
 @csrf_exempt
@@ -340,14 +370,21 @@ def reset_prompt_api(request, project_id, prompt_id):
         )
     prompt.content = default["content"]
     prompt.save(update_fields=["content", "updated_at"])
-    return JsonResponse(
-        {
-            "id": str(prompt.id),
-            "prompt_id": prompt.prompt_id,
-            "name": prompt.name,
-            "content": prompt.content,
-        }
-    )
+    return JsonResponse(_prompt_json(prompt))
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_prompt_api(request, project_id, prompt_id):
+    """POST: delete a custom prompt."""
+    project = get_object_or_404(Project, id=project_id)
+    prompt = get_object_or_404(Prompt, id=prompt_id, project=project)
+    if prompt.built_in:
+        return JsonResponse(
+            {"error": "Cannot delete a built-in prompt."}, status=400
+        )
+    prompt.delete()
+    return JsonResponse({"ok": True})
 
 
 @csrf_exempt

@@ -42,12 +42,20 @@ urlpatterns = [
         views.project_prompts_api,
     ),
     path(
+        "api/projects/<str:project_id>/prompts/create",
+        views.create_prompt_api,
+    ),
+    path(
         "api/projects/<str:project_id>/prompts/<str:prompt_id>/update",
         views.update_prompt_api,
     ),
     path(
         "api/projects/<str:project_id>/prompts/<str:prompt_id>/reset",
         views.reset_prompt_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/prompts/<str:prompt_id>/delete",
+        views.delete_prompt_api,
     ),
     path(
         "api/projects/<str:project_id>/update",
