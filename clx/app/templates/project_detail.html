@@ -6,6 +6,7 @@
 <div x-data="{
          activeTab: 'overview',
          tasks: [],
+         tasksLoading: false,
          documents: [],
          page: 1,
          hasNext: false,
@@ -307,9 +308,11 @@
                  .then(data => { this.prompts = data.prompts; });
          },
          fetchTasks() {
+             this.tasksLoading = true;
              fetch('/api/projects/{{ project.id }}/tasks/update', { method: 'POST' })
                  .then(r => r.json())
-                 .then(data => { this.tasks = data.tasks; });
+                 .then(data => { this.tasks = data.tasks; this.tasksLoading = false; })
+                 .catch(() => { this.tasksLoading = false; });
          },
          savePrompt(prompt) {
              fetch('/api/projects/{{ project.id }}/prompts/' + prompt.id + '/update', {
@@ -468,7 +471,7 @@
                     <button @click="fetchTasks()"
                             class="text-slate-500 hover:text-slate-300 transition-colors"
                             title="Refresh tasks">
-                        <i class="fas fa-arrows-rotate text-xs"></i>
+                        <i class="fas fa-arrows-rotate text-xs" :class="tasksLoading && 'fa-spin'"></i>
                     </button>
                 </div>
                 <div class="space-y-1.5">
