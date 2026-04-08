@@ -508,17 +508,16 @@ def create_thread_api(request, project_id, label_id):
 
 
 def _active_token_count(thread, messages=None):
-    """Sum num_tokens from the last compact point onward."""
+    """Sum num_tokens from the last compact point onward, excluding hidden."""
     compact_msg = (
         thread.messages.filter(is_compact=True)
         .order_by("-created_at")
         .values_list("created_at", flat=True)
         .first()
     )
+    qs = thread.messages.filter(hidden=False)
     if compact_msg:
-        qs = thread.messages.filter(created_at__gte=compact_msg)
-    else:
-        qs = thread.messages
+        qs = qs.filter(created_at__gte=compact_msg)
     return qs.aggregate(total=Sum("num_tokens"))["total"] or 0
 
 

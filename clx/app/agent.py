@@ -8,6 +8,7 @@ from clx.app.tools import (
     AddTrainingExamples,
     Annotate,
     AskUser,
+    ClearToolHistory,
     CompactMemory,
     Search,
     UpdateLabelInstructions,
@@ -50,10 +51,13 @@ class CLXAgent(Agent):
         AddTrainingExamples,
         Annotate,
         CompactMemory,
+        ClearToolHistory,
         UpdateLabelInstructions,
         UpdateProjectInstructions,
         AskUser,
     ]
+
+    _internal_fields = {"name", "args", "hidden"}
 
     def __init__(self, thread, **kwargs):
         self.thread = thread
@@ -95,11 +99,15 @@ class CLXAgent(Agent):
 
         if compact_msg:
             summary = compact_msg.data.get("content", "")
-            db_messages = list(
+            db_rows = list(
                 thread.messages.filter(created_at__gt=compact_msg.created_at)
                 .order_by("created_at")
-                .values_list("data", flat=True)
+                .values_list("data", "hidden")
             )
+            db_messages = [
+                {**data, "hidden": True} if hidden else data
+                for data, hidden in db_rows
+            ]
             messages = [
                 {"role": "system", "content": system_prompt},
                 {
@@ -110,11 +118,15 @@ class CLXAgent(Agent):
             # +2 for system prompt and synthetic summary message
             self._persisted_count = len(db_messages) + 2
         else:
-            db_messages = list(
+            db_rows = list(
                 thread.messages.order_by("created_at").values_list(
-                    "data", flat=True
+                    "data", "hidden"
                 )
             )
+            db_messages = [
+                {**data, "hidden": True} if hidden else data
+                for data, hidden in db_rows
+            ]
             messages = [
                 {"role": "system", "content": system_prompt}
             ] + db_messages
@@ -127,15 +139,28 @@ class CLXAgent(Agent):
             **kwargs,
         )
 
+    @property
+    def sanitized_messages(self):
+        """Strip internal fields and exclude hidden messages."""
+        return [
+            {
+                k: v
+                for k, v in message.items()
+                if k not in self._internal_fields
+            }
+            for message in self.messages
+            if not message.get("hidden")
+        ]
+
     def active_token_count(self):
-        """Token count from last compact point onward."""
+        """Token count from last compact point onward, excluding hidden."""
         compact_msg = (
             self.thread.messages.filter(is_compact=True)
             .order_by("-created_at")
             .values_list("created_at", flat=True)
             .first()
         )
-        qs = self.thread.messages
+        qs = self.thread.messages.filter(hidden=False)
         if compact_msg:
             qs = qs.filter(created_at__gte=compact_msg)
         return qs.aggregate(total=Sum("num_tokens"))["total"] or 0
@@ -188,6 +213,7 @@ class CLXAgent(Agent):
                     msg.get("role") == "tool"
                     and msg.get("name") == "CompactMemory"
                 ),
+                hidden=msg.get("hidden", False),
             )
             for msg in new_messages
         ]

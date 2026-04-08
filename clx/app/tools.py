@@ -316,6 +316,44 @@ class CompactMemory(Tool):
         return self.summary
 
 
+class ClearToolHistory(Tool):
+    """Clear tool calls and responses from the conversation history.
+
+    This hides all previous tool call and tool response messages from
+    the LLM context while keeping them in the database and UI. Use this
+    to reduce context size when tool history is no longer needed.
+    """
+
+    def __call__(self, agent):
+        from clx.app.models import Message as MessageModel
+
+        # Find the current assistant message (contains this tool call).
+        current_assistant_idx = None
+        for i in range(len(agent.messages) - 1, -1, -1):
+            msg = agent.messages[i]
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                current_assistant_idx = i
+                break
+
+        # Hide all tool-related messages before the current assistant message.
+        for i, msg in enumerate(agent.messages):
+            if i == current_assistant_idx:
+                continue
+            if msg.get("role") == "tool" or msg.get("tool_calls"):
+                msg["hidden"] = True
+
+        # Update DB — hide all existing tool-related messages.
+        # Current step's messages haven't been saved yet, so this is safe.
+        MessageModel.objects.filter(
+            thread=agent.thread, hidden=False, data__role="tool"
+        ).update(hidden=True)
+        MessageModel.objects.filter(
+            thread=agent.thread, hidden=False
+        ).filter(data__has_key="tool_calls").update(hidden=True)
+
+        return "Tool history cleared from context."
+
+
 class AskUser(Tool):
     """Ask the user a question with proposed answer options.
 
