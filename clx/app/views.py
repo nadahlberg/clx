@@ -304,9 +304,7 @@ def project_prompts_api(request, project_id):
     if to_create:
         Prompt.objects.bulk_create(to_create)
     prompts = project.prompts.order_by("built_in", "created_at")
-    return JsonResponse(
-        {"prompts": [_prompt_json(p) for p in prompts]}
-    )
+    return JsonResponse({"prompts": [_prompt_json(p) for p in prompts]})
 
 
 @csrf_exempt
