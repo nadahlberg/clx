@@ -248,10 +248,10 @@ class CompactMemory(Tool):
 
 
 class AskUser(Tool):
-    """Ask the user a question with proposed answer options. Use this when you need clarification or want the user to choose between options. The question and options will be presented to the user in an interactive card."""
+    """Ask the user a question with proposed answer options. The user will pick exactly one option, so make the options mutually exclusive. Use this when you need clarification or want the user to choose between alternatives. The question and options will be presented to the user in an interactive card."""
 
     question: str = Field(description="The question to ask the user")
-    options: list[str] = Field(description="A list of proposed answer options")
+    options: list[str] = Field(description="A list of mutually exclusive answer options (user picks one)")
 
     def __call__(self, agent):
         return "This question will be presented to the user."
