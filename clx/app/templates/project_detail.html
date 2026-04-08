@@ -23,7 +23,7 @@
          _savedLabelName: null,
          _savedLabelInstructions: null,
          editingInstructions: false,
-         settingsSection: 'label',
+         settingsSection: 'project',
          activeLabel: null,
          labels: [],
          labelDropdownOpen: false,
@@ -429,7 +429,7 @@
                 {id: 'agent', icon: 'fa-robot', label: 'Agent'},
                 {id: 'settings', icon: 'fa-gear', label: 'Settings'}
             ]" :key="tab.id">
-                <button @click="activeTab = tab.id; if (activeLabel) { activeLabel.name = _savedLabelName; activeLabel.instructions = _savedLabelInstructions || ''; } projectName = _savedProjectName; projectInstructions = _savedProjectInstructions;"
+                <button @click="activeTab = tab.id; settingsSection = 'project'; if (activeLabel) { activeLabel.name = _savedLabelName; activeLabel.instructions = _savedLabelInstructions || ''; } projectName = _savedProjectName; projectInstructions = _savedProjectInstructions;"
                         class="px-4 text-xs font-medium flex items-center gap-1.5 border-b-2 transition-colors"
                         :class="activeTab === tab.id
                             ? 'border-indigo-400 text-indigo-400'
@@ -492,8 +492,8 @@
                 <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Settings</h3>
                 <div class="space-y-1">
                     <template x-for="sec in [
-                        {id: 'label', icon: 'fa-tag', label: 'Label Settings'},
                         {id: 'project', icon: 'fa-folder', label: 'Project Settings'},
+                        {id: 'label', icon: 'fa-tag', label: 'Label Settings'},
                         {id: 'prompts', icon: 'fa-bolt', label: 'Prompts'},
                         {id: 'danger', icon: 'fa-triangle-exclamation', label: 'Danger Zone'}
                     ]" :key="sec.id">
