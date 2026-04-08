@@ -35,6 +35,43 @@ cases you identified.
 """
 
 
+SAMPLING_STRATEGY = """
+Search the project data with a variety of queries to build a diverse training \
+set for this label. Your goal is to sample broadly — don't just grab the \
+obvious positives. Include clear positives, clear negatives, edge cases, and \
+examples from different subgroups or patterns in the data.
+
+Start by reviewing the label instructions and any existing training examples \
+(search with from_training_set=true) to understand what's already covered. \
+Then run diverse searches — vary your queries to surface different topics, \
+styles, and edge cases. Use broad queries, narrow queries, negations, and \
+prefix searches to reach different corners of the data.
+
+Add each batch of results to the training set with AddTrainingExamples. Aim \
+for a balanced, representative set that covers the full spectrum of what this \
+label should and shouldn't match. Prioritize diversity over volume — a smaller \
+set with good coverage is better than a large homogeneous one.
+
+After sampling, report what you added and any gaps you noticed.
+"""
+
+ANNOTATE = """
+Annotate all unannotated training examples for this label. Search for \
+unannotated documents (use annotation='none') and classify each one as 'yes', \
+'no', or 'skip' based on the label instructions.
+
+Work through the unannotated examples in batches. For each batch, read the \
+documents carefully and apply the label criteria consistently. Use 'yes' for \
+clear matches, 'no' for clear non-matches, and 'skip' only for documents that \
+are genuinely ambiguous or where you cannot make a confident determination.
+
+If the label instructions are unclear or you encounter edge cases not covered \
+by the guidelines, ask the user for clarification before proceeding.
+
+Continue until all unannotated examples have been annotated.
+"""
+
+
 prompt_registry = {
     "project_understanding": {
         "name": "Project Understanding",
@@ -43,5 +80,13 @@ prompt_registry = {
     "label_understanding": {
         "name": "Label Understanding",
         "content": LABEL_UNDERSTANDING.strip(),
+    },
+    "sampling_strategy": {
+        "name": "Sampling Strategy",
+        "content": SAMPLING_STRATEGY.strip(),
+    },
+    "annotate": {
+        "name": "Annotate",
+        "content": ANNOTATE.strip(),
     },
 }
