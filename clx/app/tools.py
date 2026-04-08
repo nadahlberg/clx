@@ -162,7 +162,7 @@ class AddTrainingExamples(Tool):
             if search.get("from_training_set"):
                 documents = documents.training_examples(label.id)
             if self.num_docs is not None:
-                documents = documents[:self.num_docs]
+                documents = documents[: self.num_docs]
             doc_ids = list(documents.values_list("id", flat=True))
         else:
             doc_ids = self.document_ids
@@ -243,7 +243,7 @@ class Annotate(Tool):
 
 
 class CompactMemory(Tool):
-    """Compact the conversation by replacing prior messages with a summary. ONLY call this tool when the user explicitly asks to compact or summarize the conversation. Write a detailed, verbose summary that captures all important context, decisions, findings, and state so nothing is lost."""
+    """Compact the conversation by replacing prior messages with a summary. ONLY call this tool when the user explicitly asks to compact or summarize the conversation. Write a detailed, verbose summary that captures all important context, decisions, findings, and state so nothing is lost. Try to keep the summary under 2500 tokens and avoid repeating content in your system prompt."""
 
     summary: str = Field(
         description="A detailed summary of the conversation so far. Be verbose — include key findings, decisions made, tool results, instructions given, and any state the agent should remember. This will replace all prior messages."
@@ -257,7 +257,9 @@ class AskUser(Tool):
     """Ask the user a question with proposed answer options. The user will pick exactly one option, so make the options mutually exclusive. Use this when you need clarification or want the user to choose between alternatives. The question and options will be presented to the user in an interactive card."""
 
     question: str = Field(description="The question to ask the user")
-    options: list[str] = Field(description="A list of mutually exclusive answer options (user picks one)")
+    options: list[str] = Field(
+        description="A list of mutually exclusive answer options (user picks one)"
+    )
 
     def __call__(self, agent):
         return "This question will be presented to the user."

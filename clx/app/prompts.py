@@ -68,7 +68,12 @@ then you might leave this blank.
 positive examples. It does not need to be perfect or complete, but it should catch \
 many easy positives.
 
-# Step 3: Create the initial sample
+# Step 3: Store the heuristics in the label instructions
+
+Add a note detailing the function of the heuristics and their queries to the label \
+instructions.
+
+# Step 4: Create the initial sample
 
 Sample approximately 1/3 of the expected training set size from three buckets:
 
@@ -82,14 +87,14 @@ sample in 1000 examples, you might do a search with num_results=5 and then sampl
 examples from that search. This is encouraged so that you don't need to pull literally \
 every example into context.
 
-# Step 4: Target specific language
+# Step 5: Target specific language
 
 You should perform additional queries to sample in any specific language that is discussed \
 in the label instructions. How many examples will depend on dataset size, but feel free to \
 grow the dataset size by ~20% with the stuff you pull in. Be thorough to capture any edge cases
 whose representation needs boosted.
 
-# Step 5: Target unknown language
+# Step 6: Target unknown language
 
 Try to come up with queries that exclude as many things that are easily targetable. The goal here \
 is to sample in even more underrepresented language that will not be easily targeted by the other \
@@ -98,6 +103,8 @@ are even more narrowly targeted.
 """
 
 ANNOTATE = """
+# Step 1: Annotate remaining examples
+
 Annotate all unannotated training examples for this label. Search for \
 unannotated documents (use annotation='none', query=None) and classify each one as 'yes', \
 'no', or 'skip' based on the label instructions.
@@ -108,10 +115,13 @@ clear matches, 'no' for clear non-matches, and 'skip' only for documents that \
 are genuinely ambiguous or where you cannot make a confident determination.
 
 If the label instructions are unclear or you encounter edge cases not covered \
-by the guidelines, ask the user for clarification so that you can update the instructions \
-before proceeding.
+by the guidelines, use your tool to ask the user for clarification so that you \
+can update the instructions before proceeding.
 
-Continue until all unannotated examples have been annotated.
+You should continue annotating until all unannotated examples have been annotated or \
+until you've processed 5 batches. No matter what, do not end your turn without calling \
+the CompleteTask tool. Failing to do so will halt the process and require user intervention, \
+which we want to avoid (unless you are asking the user for feedback / clarification).
 """
 
 
