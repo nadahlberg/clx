@@ -18,7 +18,14 @@ class Search(Tool):
 
     query: Query | None = Field(
         default=None,
-        description="A structured query object. Use {type:'contains', value:'...'} for text search, {type:'startsWith', value:'...'} for prefix search, {type:'not', query:...} for negation, {type:'or', queries:[...]} for OR, {type:'and', queries:[...]} for AND. Omit to match all documents.",
+        description=(
+            "A structured query object. Use {type:'contains', value:'...'} "
+            "for text search, {type:'startsWith', value:'...'} for prefix "
+            "search, {type:'not', query:...} for negation, "
+            "{type:'or', queries:[...]} for OR, "
+            "{type:'and', queries:[...]} for AND. "
+            "Omit to match all documents."
+        ),
     )
     num_results: int = Field(
         default=10, description="Number of results to return (max 100)"
@@ -26,15 +33,25 @@ class Search(Tool):
 
     from_training_set: bool = Field(
         default=False,
-        description="If true, only search documents in the current label's training set.",
+        description=(
+            "If true, only search documents in the current "
+            "label's training set."
+        ),
     )
     annotation: str | None = Field(
         default=None,
-        description="Filter by annotation value: 'yes', 'no', 'skip', 'none' (unannotated), or 'any' (has any annotation). Implies from_training_set.",
+        description=(
+            "Filter by annotation value: 'yes', 'no', 'skip', "
+            "'none' (unannotated), or 'any' (has any annotation). "
+            "Implies from_training_set."
+        ),
     )
     count_only: bool = Field(
         default=False,
-        description="If true, return only the count of matching documents (num_results is ignored).",
+        description=(
+            "If true, return only the count of matching documents "
+            "(num_results is ignored)."
+        ),
     )
 
     def __call__(self, agent):
@@ -148,15 +165,24 @@ class AddTrainingExamples(Tool):
 
     search_id: str | None = Field(
         default=None,
-        description="A search ID from a previous Search call (e.g. 'aBcDeFgH'). Re-runs the query and adds up to num_docs documents.",
+        description=(
+            "A search ID from a previous Search call (e.g. 'aBcDeFgH'). "
+            "Re-runs the query and adds up to num_docs documents."
+        ),
     )
     num_docs: int | None = Field(
         default=None,
-        description="Max number of documents to add. Only used with search_id. Defaults to all matching documents.",
+        description=(
+            "Max number of documents to add. Only used with search_id. "
+            "Defaults to all matching documents."
+        ),
     )
     document_ids: list[str] | None = Field(
         default=None,
-        description="Explicit list of document IDs (short UUIDs, NOT document text) to add.",
+        description=(
+            "Explicit list of document IDs "
+            "(short UUIDs, NOT document text) to add."
+        ),
     )
 
     def __call__(self, agent):
@@ -278,7 +304,12 @@ class CompactMemory(Tool):
     """
 
     summary: str = Field(
-        description="A detailed summary of the conversation so far. Be verbose — include key findings, decisions made, tool results, instructions given, and any state the agent should remember. This will replace all prior messages."
+        description=(
+            "A detailed summary of the conversation so far. Be verbose — "
+            "include key findings, decisions made, tool results, "
+            "instructions given, and any state the agent should remember. "
+            "This will replace all prior messages."
+        )
     )
 
     def __call__(self, agent):
@@ -296,7 +327,10 @@ class AskUser(Tool):
 
     question: str = Field(description="The question to ask the user")
     options: list[str] = Field(
-        description="A list of mutually exclusive answer options (user picks one)"
+        description=(
+            "A list of mutually exclusive answer options "
+            "(user picks one)"
+        )
     )
 
     def __call__(self, agent):
