@@ -12,8 +12,9 @@ _su = ShortUUID()
 class Search(Tool):
     """Search documents in the project using a structured query. Build queries using Contains, StartsWith, Not, Or, and And nodes. All text matching is case-insensitive."""
 
-    query: Query = Field(
-        description="A structured query object. Use {type:'contains', value:'...'} for text search, {type:'startsWith', value:'...'} for prefix search, {type:'not', query:...} for negation, {type:'or', queries:[...]} for OR, {type:'and', queries:[...]} for AND."
+    query: Query | None = Field(
+        default=None,
+        description="A structured query object. Use {type:'contains', value:'...'} for text search, {type:'startsWith', value:'...'} for prefix search, {type:'not', query:...} for negation, {type:'or', queries:[...]} for OR, {type:'and', queries:[...]} for AND. Omit to match all documents.",
     )
     num_results: int = Field(
         default=10, description="Number of results to return (max 100)"
@@ -36,7 +37,8 @@ class Search(Tool):
         project = agent.thread.label.project
         label_id = agent.thread.label_id
         documents = project.documents.order_by("shuffle_key")
-        documents = documents.text_query(self.query.model_dump())
+        if self.query:
+            documents = documents.text_query(self.query.model_dump())
         if self.annotation:
             documents = documents.filter_annotation(label_id, self.annotation)
         elif self.from_training_set:
