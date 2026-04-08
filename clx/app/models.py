@@ -173,6 +173,25 @@ class Label(Base):
         ]
 
 
+class Prompt(Base):
+    """A customizable prompt template for a project."""
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="prompts"
+    )
+    prompt_id = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
+    content = models.TextField(blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "prompt_id"],
+                name="prompt_project_promptid_uniq",
+            )
+        ]
+
+
 class Thread(Base):
     """Model for LLM threads tied to a label."""
 

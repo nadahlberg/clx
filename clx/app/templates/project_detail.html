@@ -24,6 +24,9 @@
          editingLabelInstructions: false,
          filterLabelOnly: false,
          filterAnnotation: null,
+         prompts: [],
+         editingPrompt: null,
+         promptResetTarget: null,
          dangerAction: null,
          dangerConfirmText: '',
          threads: [],
@@ -280,6 +283,31 @@
                  this.editingInstructions = false;
              });
          },
+         fetchPrompts() {
+             fetch('/api/projects/{{ project.id }}/prompts')
+                 .then(r => r.json())
+                 .then(data => { this.prompts = data.prompts; });
+         },
+         savePrompt(prompt) {
+             fetch('/api/projects/{{ project.id }}/prompts/' + prompt.id + '/update', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ content: prompt.content })
+             }).then(r => r.json()).then(updated => {
+                 const idx = this.prompts.findIndex(p => p.id === updated.id);
+                 if (idx >= 0) this.prompts[idx] = updated;
+                 if (this.editingPrompt === prompt.id) this.editingPrompt = null;
+             });
+         },
+         resetPrompt(prompt) {
+             fetch('/api/projects/{{ project.id }}/prompts/' + prompt.id + '/reset', {
+                 method: 'POST'
+             }).then(r => r.json()).then(updated => {
+                 const idx = this.prompts.findIndex(p => p.id === updated.id);
+                 if (idx >= 0) this.prompts[idx] = updated;
+                 this.promptResetTarget = null;
+             });
+         },
          confirmDanger(action) {
              this.dangerAction = action;
              this.dangerConfirmText = '';
@@ -302,7 +330,7 @@
              }
          }
      }"
-     x-init="fetchDocs(); fetchLabels()"
+     x-init="fetchDocs(); fetchLabels(); fetchPrompts()"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
@@ -819,6 +847,74 @@
                     </div>
                 </div>
                 </div><!-- /Project Settings -->
+
+                <!-- Prompts -->
+                <div class="border-t border-slate-800">
+                    <div class="px-4 py-3">
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompts</h3>
+                    </div>
+                    <div class="px-4 pb-6 space-y-4">
+                        <template x-for="prompt in prompts" :key="prompt.id">
+                            <div class="border border-slate-800 rounded-lg p-3 bg-slate-900/50">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-slate-300" x-text="prompt.name"></span>
+                                    <div class="flex items-center gap-2">
+                                        <button @click="promptResetTarget = prompt"
+                                                class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                                            <i class="fas fa-rotate-left text-[10px] mr-1"></i> Reset
+                                        </button>
+                                        <button @click="editingPrompt = editingPrompt === prompt.id ? null : prompt.id; if (editingPrompt === prompt.id) { $nextTick(() => { const ta = $el.closest('[x-data]')?.querySelector('#prompt-ta-' + prompt.id); if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; ta.focus(); } }); }"
+                                                class="flex items-center gap-1 text-xs transition-colors"
+                                                :class="editingPrompt === prompt.id ? 'text-indigo-400 hover:text-indigo-300' : 'text-slate-500 hover:text-slate-300'">
+                                            <i class="fas" :class="editingPrompt === prompt.id ? 'fa-eye' : 'fa-pen'"></i>
+                                            <span x-text="editingPrompt === prompt.id ? 'Preview' : 'Edit'"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div x-show="editingPrompt !== prompt.id"
+                                     class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 min-h-[2.5rem]">
+                                    <div x-show="prompt.content.trim()"
+                                         class="text-sm text-slate-300 prose-chat prose-chat-dark"
+                                         x-html="renderMarkdown(prompt.content || '')"></div>
+                                    <p x-show="!prompt.content.trim()" class="text-sm text-slate-600 italic">No content.</p>
+                                </div>
+                                <textarea x-show="editingPrompt === prompt.id" x-cloak
+                                          :id="'prompt-ta-' + prompt.id"
+                                          x-model="prompt.content"
+                                          @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                          rows="3"
+                                          class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-slate-600"></textarea>
+                                <div x-show="editingPrompt === prompt.id" class="flex justify-end mt-2">
+                                    <button @click="savePrompt(prompt)"
+                                            class="px-4 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="prompts.length === 0" class="text-sm text-slate-500">No prompts configured.</div>
+                    </div>
+                </div>
+
+                <!-- Reset Prompt Modal -->
+                <template x-if="promptResetTarget">
+                    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                         @keydown.escape.window="promptResetTarget = null">
+                        <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-modal p-6 w-full max-w-sm"
+                             @click.outside="promptResetTarget = null">
+                            <h2 class="text-lg font-semibold text-slate-200 mb-2">Reset Prompt</h2>
+                            <p class="text-sm text-slate-400 mb-4">
+                                Reset <strong class="text-slate-200" x-text="promptResetTarget.name"></strong> to its default content? Your changes will be lost.
+                            </p>
+                            <div class="flex justify-end gap-3">
+                                <button @click="promptResetTarget = null"
+                                        class="px-4 py-2 text-sm text-slate-400 hover:text-slate-200">Cancel</button>
+                                <button @click="resetPrompt(promptResetTarget)"
+                                        class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-500">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
 
                 <!-- Danger Zone -->
                 <div class="border-t border-slate-800 mt-4">

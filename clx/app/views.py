@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Label, Project, Thread
+from .models import Label, Project, Prompt, Thread
 
 DOCS_PER_PAGE = 100
 
@@ -263,6 +263,89 @@ def update_project_api(request, project_id):
             "id": str(project.id),
             "name": project.name,
             "instructions": project.instructions,
+        }
+    )
+
+
+@require_GET
+def project_prompts_api(request, project_id):
+    """GET: list prompts for a project, lazy-creating from registry."""
+    from .prompts import prompt_registry
+
+    project = get_object_or_404(Project, id=project_id)
+    existing = {p.prompt_id for p in project.prompts.all()}
+    to_create = [
+        Prompt(
+            project=project,
+            prompt_id=pid,
+            name=entry["name"],
+            content=entry["content"],
+        )
+        for pid, entry in prompt_registry.items()
+        if pid not in existing
+    ]
+    if to_create:
+        Prompt.objects.bulk_create(to_create)
+    prompts = project.prompts.order_by("created_at")
+    return JsonResponse(
+        {
+            "prompts": [
+                {
+                    "id": str(p.id),
+                    "prompt_id": p.prompt_id,
+                    "name": p.name,
+                    "content": p.content,
+                }
+                for p in prompts
+            ]
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_prompt_api(request, project_id, prompt_id):
+    """POST: update a prompt's content."""
+    project = get_object_or_404(Project, id=project_id)
+    prompt = get_object_or_404(Prompt, id=prompt_id, project=project)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    if "content" in data:
+        prompt.content = data["content"]
+        prompt.save(update_fields=["content", "updated_at"])
+    return JsonResponse(
+        {
+            "id": str(prompt.id),
+            "prompt_id": prompt.prompt_id,
+            "name": prompt.name,
+            "content": prompt.content,
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def reset_prompt_api(request, project_id, prompt_id):
+    """POST: reset a prompt's content to the registry default."""
+    from .prompts import prompt_registry
+
+    project = get_object_or_404(Project, id=project_id)
+    prompt = get_object_or_404(Prompt, id=prompt_id, project=project)
+    default = prompt_registry.get(prompt.prompt_id)
+    if not default:
+        return JsonResponse(
+            {"error": "No default found for this prompt."}, status=400
+        )
+    prompt.content = default["content"]
+    prompt.save(update_fields=["content", "updated_at"])
+    return JsonResponse(
+        {
+            "id": str(prompt.id),
+            "prompt_id": prompt.prompt_id,
+            "name": prompt.name,
+            "content": prompt.content,
         }
     )
 
