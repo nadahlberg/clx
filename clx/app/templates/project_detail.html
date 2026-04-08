@@ -429,7 +429,7 @@
                 {id: 'agent', icon: 'fa-robot', label: 'Agent'},
                 {id: 'settings', icon: 'fa-gear', label: 'Settings'}
             ]" :key="tab.id">
-                <button @click="activeTab = tab.id"
+                <button @click="activeTab = tab.id; if (activeLabel) { activeLabel.name = _savedLabelName; activeLabel.instructions = _savedLabelInstructions || ''; } projectName = _savedProjectName; projectInstructions = _savedProjectInstructions;"
                         class="px-4 text-xs font-medium flex items-center gap-1.5 border-b-2 transition-colors"
                         :class="activeTab === tab.id
                             ? 'border-indigo-400 text-indigo-400'
@@ -497,7 +497,7 @@
                         {id: 'prompts', icon: 'fa-bolt', label: 'Prompts'},
                         {id: 'danger', icon: 'fa-triangle-exclamation', label: 'Danger Zone'}
                     ]" :key="sec.id">
-                        <button @click="settingsSection = sec.id"
+                        <button @click="settingsSection = sec.id; if (activeLabel) { activeLabel.name = _savedLabelName; activeLabel.instructions = _savedLabelInstructions || ''; } projectName = _savedProjectName; projectInstructions = _savedProjectInstructions;"
                                 class="w-full text-left px-3 py-2 text-xs rounded-md transition-colors flex items-center gap-2"
                                 :class="settingsSection === sec.id
                                     ? (sec.id === 'danger' ? 'bg-red-950/30 text-red-400' : 'bg-slate-800 text-indigo-400')
