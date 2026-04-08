@@ -610,8 +610,8 @@ def send_message_api(request, project_id, thread_id):
         if "CompleteTask" in tool_names:
             active_task.delete()
             project.update_tasks()
-        elif "AskUser" not in tool_names:
-            # Agent didn't ask more questions or complete — let autopilot nudge.
+        else:
+            # Task not completed — reset to pending so autopilot can nudge.
             active_task.status = Task.Status.PENDING
             active_task.save(update_fields=["status", "updated_at"])
 

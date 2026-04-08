@@ -128,8 +128,6 @@ class CLXAgent(Agent):
             **kwargs,
         )
 
-    TERMINAL_TOOLS = {"AskUser", "CompleteTask"}
-
     def active_token_count(self):
         """Token count from last compact point onward."""
         compact_msg = (
@@ -146,8 +144,8 @@ class CLXAgent(Agent):
     def autopilot_run(self, message, max_nudges=3):
         """Run agent in autopilot mode.
 
-        Returns one of: 'completed', 'awaiting_input', 'max_steps'.
-        Auto-nudges when the agent responds without calling a terminal tool.
+        Returns 'completed' or 'awaiting_input'.
+        Auto-nudges when the agent's turn ends without calling CompleteTask.
         Pre-compacts if token count exceeds 100k.
         """
         COMPACT_THRESHOLD = 100_000
@@ -167,14 +165,14 @@ class CLXAgent(Agent):
                     "of the full conversation so far."
                 )
 
-            # Run the agent step loop, breaking on terminal tools.
+            # Run the agent step loop, breaking on CompleteTask.
             result = self._autopilot_step_loop(message)
             message = None
 
-            if result in ("completed", "awaiting_input"):
-                return result
+            if result == "completed":
+                return "completed"
 
-            # result == "needs_nudge" — agent gave text without terminal tool
+            # Turn ended without CompleteTask — nudge or give up.
             nudge_count += 1
             if nudge_count > max_nudges:
                 logger.info("Max nudges reached, marking as awaiting_input")
@@ -184,28 +182,22 @@ class CLXAgent(Agent):
             message = NUDGE
 
     def _autopilot_step_loop(self, message):
-        """Inner step loop that breaks on terminal tools."""
+        """Inner step loop that breaks on CompleteTask."""
         for _ in range(self.max_steps):
             response = self.step(message, call_tools=True)
             message = None
 
-            # Collect tool names from this step's response.
-            tool_names = set()
             if response.get("tool_calls"):
                 tool_names = {
                     tc["function"]["name"]
                     for tc in response["tool_calls"]
                 }
-
-            if tool_names & self.TERMINAL_TOOLS:
                 if "CompleteTask" in tool_names:
                     return "completed"
-                return "awaiting_input"
+            else:
+                return "turn_ended"
 
-            if not response.get("tool_calls"):
-                return "needs_nudge"
-
-        return "max_steps"
+        return "turn_ended"
 
     def on_step(self, response_message):
         """Save any new messages to the database."""
