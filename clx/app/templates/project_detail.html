@@ -16,6 +16,7 @@
          projectName: '{{ project.name|escapejs }}',
          projectInstructions: '{{ project.instructions|escapejs }}',
          editingInstructions: false,
+         settingsSection: 'label',
          activeLabel: null,
          labels: [],
          labelDropdownOpen: false,
@@ -395,8 +396,30 @@
                 </div>
             </div>
 
-            <!-- Other tabs: Filters panel -->
-            <div x-show="activeTab !== 'agent'" x-cloak class="p-4 scrollable-panel scrollable-dark">
+            <!-- Settings tab: Section nav -->
+            <div x-show="activeTab === 'settings'" x-cloak class="flex-1 flex flex-col min-h-0 p-4">
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Settings</h3>
+                <div class="space-y-1">
+                    <template x-for="sec in [
+                        {id: 'label', icon: 'fa-tag', label: 'Label Settings'},
+                        {id: 'project', icon: 'fa-folder', label: 'Project Settings'},
+                        {id: 'prompts', icon: 'fa-bolt', label: 'Prompts'},
+                        {id: 'danger', icon: 'fa-triangle-exclamation', label: 'Danger Zone'}
+                    ]" :key="sec.id">
+                        <button @click="settingsSection = sec.id"
+                                class="w-full text-left px-3 py-2 text-xs rounded-md transition-colors flex items-center gap-2"
+                                :class="settingsSection === sec.id
+                                    ? (sec.id === 'danger' ? 'bg-red-950/30 text-red-400' : 'bg-slate-800 text-indigo-400')
+                                    : (sec.id === 'danger' ? 'text-red-400/60 hover:bg-slate-800/50 hover:text-red-400' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200')">
+                            <i class="fas text-[10px]" :class="sec.icon"></i>
+                            <span x-text="sec.label"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Search/Labels tabs: Filters panel -->
+            <div x-show="activeTab === 'search' || activeTab === 'labels'" x-cloak class="p-4 scrollable-panel scrollable-dark">
                 <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Filters</h3>
                 <div class="flex items-center justify-between mb-1">
                     <label class="text-xs font-medium text-slate-500">Query</label>
@@ -773,9 +796,8 @@
 
             <!-- Tab: Settings -->
             <div x-show="activeTab === 'settings'" x-cloak class="flex-1 flex flex-col min-h-0 bg-slate-900">
-                <div class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                 <!-- Label Settings -->
-                <div class="border-b border-slate-800 pb-1">
+                <div x-show="settingsSection === 'label'" class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                     <div class="px-4 py-3 flex items-center justify-between">
                         <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Label Settings</h3>
                         <button @click="saveLabel()"
@@ -824,7 +846,7 @@
                 </div>
 
                 <!-- Project Settings -->
-                <div>
+                <div x-show="settingsSection === 'project'" class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                     <div class="px-4 py-3 flex items-center justify-between">
                         <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Settings</h3>
                         <button @click="saveProject()"
@@ -833,44 +855,42 @@
                         </button>
                     </div>
                     <div class="px-4 pb-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
-                        <input type="text"
-                               x-model="projectName"
-                               class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="text-sm font-medium text-slate-300">Instructions</label>
-                            <button @click="editingInstructions = !editingInstructions; if (editingInstructions) { $nextTick(() => { const ta = document.getElementById('instructions-textarea'); if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; ta.focus(); } }); }"
-                                    class="flex items-center gap-1.5 text-xs transition-colors"
-                                    :class="editingInstructions ? 'text-indigo-400 hover:text-indigo-300' : 'text-slate-500 hover:text-slate-300'">
-                                <i class="fas" :class="editingInstructions ? 'fa-eye' : 'fa-pen'"></i>
-                                <span x-text="editingInstructions ? 'Preview' : 'Edit'"></span>
-                            </button>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
+                            <input type="text"
+                                   x-model="projectName"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
-                        <!-- Markdown view -->
-                        <div x-show="!editingInstructions"
-                             class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 min-h-[2.5rem]">
-                            <div x-show="projectInstructions.trim()"
-                                 class="text-sm text-slate-300 prose-chat prose-chat-dark"
-                                 x-html="renderMarkdown(projectInstructions)"></div>
-                            <p x-show="!projectInstructions.trim()" class="text-sm text-slate-600 italic">No instructions yet.</p>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-sm font-medium text-slate-300">Instructions</label>
+                                <button @click="editingInstructions = !editingInstructions; if (editingInstructions) { $nextTick(() => { const ta = document.getElementById('instructions-textarea'); if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; ta.focus(); } }); }"
+                                        class="flex items-center gap-1.5 text-xs transition-colors"
+                                        :class="editingInstructions ? 'text-indigo-400 hover:text-indigo-300' : 'text-slate-500 hover:text-slate-300'">
+                                    <i class="fas" :class="editingInstructions ? 'fa-eye' : 'fa-pen'"></i>
+                                    <span x-text="editingInstructions ? 'Preview' : 'Edit'"></span>
+                                </button>
+                            </div>
+                            <div x-show="!editingInstructions"
+                                 class="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 min-h-[2.5rem]">
+                                <div x-show="projectInstructions.trim()"
+                                     class="text-sm text-slate-300 prose-chat prose-chat-dark"
+                                     x-html="renderMarkdown(projectInstructions)"></div>
+                                <p x-show="!projectInstructions.trim()" class="text-sm text-slate-600 italic">No instructions yet.</p>
+                            </div>
+                            <textarea x-show="editingInstructions" x-cloak
+                                      id="instructions-textarea"
+                                      x-model="projectInstructions"
+                                      @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                      rows="3"
+                                      placeholder="Project-level instructions for the agent..."
+                                      class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-slate-600"></textarea>
                         </div>
-                        <!-- Edit view -->
-                        <textarea x-show="editingInstructions" x-cloak
-                                  id="instructions-textarea"
-                                  x-model="projectInstructions"
-                                  @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
-                                  rows="3"
-                                  placeholder="Project-level instructions for the agent..."
-                                  class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder:text-slate-600"></textarea>
                     </div>
                 </div>
-                </div><!-- /Project Settings -->
 
                 <!-- Prompts -->
-                <div class="border-t border-slate-800">
+                <div x-show="settingsSection === 'prompts'" class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                     <div class="px-4 py-3">
                         <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompts</h3>
                     </div>
@@ -918,7 +938,7 @@
                 </div>
 
                 <!-- Danger Zone -->
-                <div class="border-t border-slate-800 mt-4">
+                <div x-show="settingsSection === 'danger'" class="flex-1 overflow-y-auto pb-32 scrollable-panel scrollable-dark">
                     <div class="px-4 py-3">
                         <h3 class="text-xs font-semibold text-red-400 uppercase tracking-wider">Danger Zone</h3>
                     </div>
@@ -947,8 +967,6 @@
                         </div>
                     </div>
                 </div>
-
-                </div><!-- /scrollable -->
             </div>
         </div>
 
