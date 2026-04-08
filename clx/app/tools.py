@@ -123,15 +123,15 @@ class UpdateProjectInstructions(Tool):
 
 
 class AddTrainingExamples(Tool):
-    """Add documents to the current label's training set. These become reference examples for classification. Preferred: pass search_id from a previous Search call. Alternatively, pass explicit document_ids (the short UUIDs shown as doc_id= in search results). Do not pass both."""
+    """Add documents to the current label's training set. These become reference examples for classification. Preferred: pass search_id from a previous Search call — this re-runs the query so you can sample more documents than were originally returned (use num_docs to control how many). Alternatively, pass explicit document_ids. Do not pass both."""
 
     search_id: str | None = Field(
         default=None,
-        description="A search ID from a previous Search call (e.g. 'aBcDeFgH'). Adds all (or num_docs) documents from that search.",
+        description="A search ID from a previous Search call (e.g. 'aBcDeFgH'). Re-runs the query and adds up to num_docs documents.",
     )
     num_docs: int | None = Field(
         default=None,
-        description="Max number of documents to add from the search results. Only used with search_id.",
+        description="Max number of documents to add. Only used with search_id. Defaults to all matching documents.",
     )
     document_ids: list[str] | None = Field(
         default=None,
@@ -153,11 +153,17 @@ class AddTrainingExamples(Tool):
             search = searches.get(self.search_id)
             if not search:
                 return f"Error: search '{self.search_id}' not found in state."
-            if "document_ids" not in search:
-                return f"Error: search '{self.search_id}' has no stored document IDs. Please run the search again."
-            doc_ids = search["document_ids"]
+            # Re-run the query to get document IDs (not limited to original result size).
+            project = label.project
+            documents = project.documents.order_by("shuffle_key")
+            query = search.get("query")
+            if query:
+                documents = documents.text_query(query)
+            if search.get("from_training_set"):
+                documents = documents.training_examples(label.id)
             if self.num_docs is not None:
-                doc_ids = doc_ids[: self.num_docs]
+                documents = documents[:self.num_docs]
+            doc_ids = list(documents.values_list("id", flat=True))
         else:
             doc_ids = self.document_ids
 
