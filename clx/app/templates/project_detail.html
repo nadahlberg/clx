@@ -664,10 +664,9 @@
                             <div class="flex items-center gap-1.5">
                                 <div class="relative">
                                     <button @click="promptDropdownOpen = !promptDropdownOpen"
-                                            class="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-300 rounded transition-colors"
+                                            class="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors"
                                             title="Insert prompt">
-                                        <i class="fas fa-bolt"></i>
-                                        <span>Prompts</span>
+                                        <i class="fas fa-bolt text-xs"></i>
                                     </button>
                                     <div x-show="promptDropdownOpen" x-cloak
                                          @click.outside="promptDropdownOpen = false"
