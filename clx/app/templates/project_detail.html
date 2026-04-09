@@ -33,6 +33,7 @@
          filterLabelOnly: false,
          filterAnnotation: null,
          filterPrediction: null,
+         sortOrder: 'shuffle',
          promptDropdownOpen: false,
          prompts: [],
          editingPrompt: null,
@@ -181,6 +182,7 @@
              if ((this.filterLabelOnly || this.filterAnnotation || this.filterPrediction) && this.activeLabel) p.set('label', this.activeLabel.id);
              if (this.filterAnnotation && this.activeLabel) p.set('annotation', this.filterAnnotation);
              if (this.filterPrediction && this.activeLabel) p.set('prediction', this.filterPrediction);
+             if (this.sortOrder !== 'shuffle') p.set('sort', this.sortOrder);
              return p.toString();
          },
          search() {
@@ -926,18 +928,27 @@
                         <i class="fas fa-spinner fa-spin mr-1"></i> Counting...
                     </span>
                 </div>
-                <!-- Pagination (floating top-right) -->
-                <div class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md bg-slate-800/90 shadow-md border border-slate-700 flex items-center gap-1.5">
+                <!-- Sort + Pagination (floating top-right) -->
+                <div class="absolute top-3 right-3 z-10 flex items-center rounded-md bg-slate-800/90 shadow-md border border-slate-700 overflow-hidden">
+                    <!-- Sort selector -->
+                    <template x-for="opt in [{id:'shuffle',label:'Shuffle'},{id:'tricky',label:'Tricky'}]" :key="opt.id">
+                        <button @click="if (sortOrder !== opt.id) { sortOrder = opt.id; page = 1; fetchDocs(); }"
+                                class="px-2.5 py-1 text-[11px] font-medium transition-colors border-r border-slate-700"
+                                :class="sortOrder === opt.id ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'"
+                                x-text="opt.label">
+                        </button>
+                    </template>
+                    <!-- Pagination -->
                     <button @click="page--; fetchDocs()"
                             :disabled="page <= 1"
-                            class="text-xs transition-colors"
+                            class="px-2 py-1 text-xs transition-colors"
                             :class="page <= 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <span class="text-[11px] text-slate-500" x-text="page"></span>
+                    <span class="text-[11px] text-slate-500 px-0.5" x-text="page"></span>
                     <button @click="page++; fetchDocs()"
                             :disabled="!hasNext"
-                            class="text-xs transition-colors"
+                            class="px-2 py-1 text-xs transition-colors"
                             :class="!hasNext ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
                         <i class="fas fa-chevron-right"></i>
                     </button>
@@ -953,11 +964,11 @@
                                 <p class="text-sm text-slate-300 flex-1" x-text="doc.text"></p>
                                 <div class="shrink-0 flex items-center gap-1 mt-0.5">
                                     <span x-show="doc.annotation"
-                                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase"
+                                          class="w-10 inline-flex items-center justify-center py-0.5 rounded text-[10px] font-semibold uppercase"
                                           :class="doc.annotation === 'yes' ? 'bg-emerald-900/50 text-emerald-400' : doc.annotation === 'no' ? 'bg-red-900/50 text-red-400' : 'bg-amber-900/50 text-amber-400'"
                                           x-text="doc.annotation"></span>
                                     <span x-show="doc.prediction"
-                                          class="inline-flex items-center px-1.5 py-0.5 rounded ring-1 ring-inset text-[10px] font-semibold uppercase"
+                                          class="w-14 inline-flex items-center justify-center py-0.5 rounded ring-1 ring-inset text-[10px] font-semibold uppercase"
                                           :class="doc.prediction === 'yes' ? 'ring-emerald-600/50 text-emerald-500' : 'ring-red-600/50 text-red-500'"
                                           :title="doc.prediction_confidence != null ? (doc.prediction_confidence * 100).toFixed(0) + '% confidence' : ''">
                                         <i class="fas fa-circle-nodes text-[8px] mr-1 opacity-60"></i><span x-text="doc.prediction"></span>

@@ -1,7 +1,7 @@
 import json
 
 from django.conf import settings as django_settings
-from django.db.models import Count, Max, Q, Sum
+from django.db.models import Count, F as models_F, Max, OuterRef, Q, Subquery, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
@@ -74,11 +74,26 @@ def _filtered_documents(project, request):
 
     Returns (queryset, label_id, has_annotation_col).
     """
-    documents = project.documents.order_by("shuffle_key")
+    sort = request.GET.get("sort", "shuffle").strip()
+    label_id = request.GET.get("label", "").strip()
+
+    if sort == "tricky" and label_id:
+        from .models import LabelDocument
+
+        documents = project.documents.annotate(
+            _pred_conf=Subquery(
+                LabelDocument.objects.filter(
+                    document=OuterRef("pk"),
+                    label_id=label_id,
+                ).values("prediction_confidence")[:1]
+            )
+        ).order_by(models_F("_pred_conf").asc(nulls_last=True))
+    else:
+        documents = project.documents.order_by("shuffle_key")
+
     qs = request.GET.get("q", "").strip()
     if qs:
         documents = documents.query_string(qs)
-    label_id = request.GET.get("label", "").strip()
     annotation = request.GET.get("annotation", "").strip()
     prediction = request.GET.get("prediction", "").strip()
     has_annotation_col = False

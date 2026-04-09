@@ -42,6 +42,13 @@ class Search(Tool):
         default=0,
         description="Number of results to skip (for pagination).",
     )
+    sort: Literal["shuffle", "tricky"] = Field(
+        default="shuffle",
+        description=(
+            "Sort order: 'shuffle' (default random order) or 'tricky' "
+            "(ascending prediction confidence — least confident first)."
+        ),
+    )
 
     from_training_set: bool = Field(
         default=False,
@@ -75,9 +82,25 @@ class Search(Tool):
     )
 
     def __call__(self, agent):
+        from django.db.models import F as models_F
+        from django.db.models import OuterRef, Subquery
+
+        from clx.app.models import LabelDocument
+
         project = agent.thread.label.project
         label_id = agent.thread.label_id
-        documents = project.documents.order_by("shuffle_key")
+
+        if self.sort == "tricky":
+            documents = project.documents.annotate(
+                _pred_conf=Subquery(
+                    LabelDocument.objects.filter(
+                        document=OuterRef("pk"),
+                        label_id=label_id,
+                    ).values("prediction_confidence")[:1]
+                )
+            ).order_by(models_F("_pred_conf").asc(nulls_last=True))
+        else:
+            documents = project.documents.order_by("shuffle_key")
         if self.query:
             documents = documents.text_query(self.query.model_dump())
         if self.prediction:
