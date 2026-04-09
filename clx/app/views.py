@@ -153,9 +153,7 @@ def project_labels_api(request, project_id):
             ),
             no=Count(
                 "id",
-                filter=Q(
-                    annotations__value="no", annotations__source="agent"
-                ),
+                filter=Q(annotations__value="no", annotations__source="agent"),
             ),
             skip=Count(
                 "id",
