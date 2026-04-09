@@ -142,16 +142,34 @@ class CLXAgent(Agent):
 
     @property
     def sanitized_messages(self):
-        """Strip internal fields and exclude hidden messages."""
-        return [
-            {
+        """Strip internal fields and summarize hidden messages."""
+        result = []
+        for message in self.messages:
+            cleaned = {
                 k: v
                 for k, v in message.items()
                 if k not in self._internal_fields
             }
-            for message in self.messages
-            if not message.get("hidden")
-        ]
+            if message.get("hidden"):
+                if message.get("tool_calls"):
+                    # Keep tool names but strip arguments.
+                    cleaned["tool_calls"] = [
+                        {
+                            **tc,
+                            "function": {
+                                **tc["function"],
+                                "arguments": "{}",
+                            },
+                        }
+                        for tc in cleaned["tool_calls"]
+                    ]
+                    cleaned.pop("content", None)
+                elif message.get("role") == "tool":
+                    cleaned["content"] = "[Removed to preserve context]"
+                else:
+                    continue
+            result.append(cleaned)
+        return result
 
     def active_token_count(self):
         """Token count from last compact point onward, excluding hidden."""
