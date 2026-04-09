@@ -890,11 +890,9 @@
                             <div class="flex items-center gap-2">
                                 <i class="fas fa-tag text-slate-500 text-xs"></i>
                                 <span class="text-sm text-slate-300" x-text="label.name"></span>
-                                <span class="ml-auto flex items-center gap-2">
-                                    <span class="text-[11px]" :class="label.instructions?.trim() ? 'text-emerald-500' : 'text-slate-600'" :title="label.instructions?.trim() ? 'Has instructions' : 'No instructions'">
-                                        <i class="fas" :class="label.instructions?.trim() ? 'fa-square-check' : 'fa-square'"></i>
-                                    </span>
-                                    <span x-show="label.stats?.total > 0" class="text-[11px] text-slate-500" x-text="label.stats?.total + ' examples'"></span>
+                                <span class="ml-auto flex items-center gap-1.5 text-[11px]" :class="label.instructions?.trim() ? 'text-emerald-500' : 'text-slate-600'">
+                                    <i class="fas" :class="label.instructions?.trim() ? 'fa-circle-check' : 'fa-circle'"></i>
+                                    <span x-text="label.instructions?.trim() ? 'Instructions' : 'Needs instructions'"></span>
                                 </span>
                             </div>
                             <template x-if="label.stats?.total > 0">
@@ -905,11 +903,12 @@
                                         <div class="bg-amber-500 transition-all" :style="'width:' + (label.stats.skip / label.stats.total * 100) + '%'"></div>
                                         <div class="bg-slate-600 transition-all" :style="'width:' + (label.stats.unannotated / label.stats.total * 100) + '%'"></div>
                                     </div>
-                                    <div class="flex gap-3 mt-1.5">
+                                    <div class="flex items-center gap-3 mt-1.5">
                                         <span class="text-[10px] text-slate-500"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span><span x-text="label.stats.yes"></span></span>
                                         <span class="text-[10px] text-slate-500"><span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1"></span><span x-text="label.stats.no"></span></span>
                                         <span class="text-[10px] text-slate-500"><span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></span><span x-text="label.stats.skip"></span></span>
                                         <span class="text-[10px] text-slate-500"><span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-600 mr-1"></span><span x-text="label.stats.unannotated"></span></span>
+                                        <span class="text-[10px] text-slate-500 ml-auto" x-text="label.stats.total + ' total'"></span>
                                     </div>
                                 </div>
                             </template>
