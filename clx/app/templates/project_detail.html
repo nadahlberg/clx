@@ -59,8 +59,10 @@
                  headers: {'Content-Type': 'application/json'},
                  body: JSON.stringify({model: this.selectedModel})
              }).then(r => r.json()).then(thread => {
-                 this.threads.unshift({id: thread.id, model: thread.model, preview: '', updated_at: new Date().toISOString()});
-                 this.selectThread(thread);
+                 this.fetchThreads().then(() => {
+                     const t = this.threads.find(t => t.id === thread.id);
+                     if (t) this.selectThread(t);
+                 });
              });
          },
          selectThread(thread) {
@@ -93,8 +95,15 @@
                      headers: {'Content-Type': 'application/json'},
                      body: JSON.stringify({model: this.selectedModel})
                  }).then(r => r.json()).then(thread => {
-                     this.threads.unshift({id: thread.id, model: thread.model, preview: '', updated_at: new Date().toISOString()});
-                     this.activeThread = thread;
+                     const newThread = {id: thread.id, model: thread.model, preview: '', updated_at: new Date().toISOString(), is_autopilot: false, autopilot_locked: false};
+                     // Insert after autopilot thread to maintain sort order.
+                     const apIdx = this.threads.findIndex(t => t.is_autopilot);
+                     if (apIdx >= 0) {
+                         this.threads.splice(apIdx + 1, 0, newThread);
+                     } else {
+                         this.threads.unshift(newThread);
+                     }
+                     this.activeThread = newThread;
                      this._doSend(content);
                  });
                  return;
