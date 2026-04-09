@@ -1373,7 +1373,8 @@
                             <span x-text="finetuneStarting ? 'Starting...' : (finetune && finetune.status === 'in_progress' ? 'Training...' : 'Run Finetune')"></span>
                         </button>
                         <!-- Prediction status -->
-                        <div x-show="finetune && finetune.status === 'completed'" class="flex items-center justify-between mt-3 mb-2">
+                        <div class="border-t border-slate-800/60 my-3"></div>
+                        <div x-show="finetune && finetune.status === 'completed'" class="flex items-center justify-between mb-2">
                             <span class="text-[11px] font-medium text-slate-400">Predictions</span>
                             <template x-if="activeLabel && activeLabel.predicted_at && activeLabel.finetuned_at && activeLabel.predicted_at >= activeLabel.finetuned_at">
                                 <span class="text-[10px] text-emerald-400 flex items-center gap-1">
