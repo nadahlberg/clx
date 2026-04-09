@@ -475,6 +475,67 @@ class Label(Base):
             ]
         )
 
+    def recalculate_prediction_stats(self):
+        """Recompute F1/accuracy from existing predictions vs annotations."""
+        ld_data = list(
+            LabelDocument.objects.filter(
+                label=self,
+            )
+            .exclude(prediction="")
+            .filter(prediction__isnull=False)
+            .values_list("id", "prediction")
+        )
+        if not ld_data:
+            self.prediction_stats = {}
+            self.save(update_fields=["prediction_stats", "updated_at"])
+            return
+
+        predictions = {ld_id: pred for ld_id, pred in ld_data}
+        ld_ids = list(predictions.keys())
+
+        annotated = dict(
+            ClassificationAnnotation.objects.filter(
+                label_document_id__in=ld_ids,
+                source="agent",
+                value__in=["yes", "no"],
+            ).values_list("label_document_id", "value")
+        )
+
+        if annotated:
+            tp = fp = fn = correct = 0
+            total = len(annotated)
+            for ld_id, true_val in annotated.items():
+                pred_val = predictions.get(ld_id)
+                if not pred_val:
+                    continue
+                if pred_val == true_val:
+                    correct += 1
+                if pred_val == "yes" and true_val == "yes":
+                    tp += 1
+                elif pred_val == "yes" and true_val == "no":
+                    fp += 1
+                elif pred_val == "no" and true_val == "yes":
+                    fn += 1
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if (precision + recall) > 0
+                else 0
+            )
+            self.prediction_stats = {
+                "f1": round(f1, 4),
+                "accuracy": round(correct / total, 4),
+                "precision": round(precision, 4),
+                "recall": round(recall, 4),
+                "total": total,
+            }
+        else:
+            self.prediction_stats = {}
+
+        self.save(update_fields=["prediction_stats", "updated_at"])
+
 
 class Prompt(Base):
     """A customizable prompt template for a project."""

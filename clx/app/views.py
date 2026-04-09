@@ -652,6 +652,16 @@ def delete_thread_api(request, project_id, thread_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def recalculate_prediction_stats_api(request, project_id, label_id):
+    """POST: recalculate prediction stats from existing predictions."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    label.recalculate_prediction_stats()
+    return JsonResponse({"prediction_stats": label.prediction_stats})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def predict_label_api(request, project_id, label_id):
     """POST: run predictions for a label using its finetuned model."""
     project = get_object_or_404(Project, id=project_id)

@@ -42,6 +42,10 @@ urlpatterns = [
         views.predict_label_api,
     ),
     path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/prediction-stats",
+        views.recalculate_prediction_stats_api,
+    ),
+    path(
         "api/projects/<str:project_id>/labels/<str:label_id>/finetune",
         views.finetune_label_api,
     ),
