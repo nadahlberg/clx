@@ -238,7 +238,8 @@ class AddTrainingExamples(Tool):
             return "Error: none of the provided document IDs are valid."
 
         objects = [
-            LabelDocument(label=label, document_id=did) for did in doc_ids
+            LabelDocument(id=_su.uuid(), label=label, document_id=did)
+            for did in doc_ids
         ]
         LabelDocument.objects.bulk_create(objects, ignore_conflicts=True)
         return f"Added {len(doc_ids)} training example(s) to label '{label.name}' (duplicates ignored)."
@@ -284,6 +285,7 @@ class Annotate(Tool):
         if valid:
             objects = [
                 ClassificationAnnotation(
+                    id=_su.uuid(),
                     label_document_id=ld_map[a.document_id],
                     value=a.value,
                     source="agent",
