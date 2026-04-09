@@ -36,7 +36,7 @@ class Search(Tool):
         ),
     )
     num_results: int = Field(
-        default=10, description="Number of results to return (max 100)"
+        default=10, description="Number of results to return (max 1000)"
     )
 
     from_training_set: bool = Field(
@@ -79,7 +79,7 @@ class Search(Tool):
             logger.debug(f"    Search count query: {time.time() - t0:.1f}s")
             return f"{total} document(s) match."
 
-        num_results = min(self.num_results, 100)
+        num_results = min(self.num_results, 1000)
         t0 = time.time()
         rows = list(documents.values_list("id", "text")[:num_results])
         db_elapsed = time.time() - t0
