@@ -3,6 +3,8 @@ import logging
 import litellm
 from django.db.models import Sum
 
+litellm.set_verbose = True
+
 from clx.app.models import Message
 from clx.app.tools import (
     AddTrainingExamples,

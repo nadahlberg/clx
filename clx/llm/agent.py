@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, ClassVar
 
 import litellm
@@ -143,7 +144,10 @@ class Agent:
         completion_args["messages"] = self.sanitized_messages
 
         # Make the completion call
+        logger.info("Calling LLM...")
+        t0 = time.time()
         self.r = litellm.completion(**completion_args)
+        llm_elapsed = time.time() - t0
         response_message = dict(self.r.choices[0].message)
 
         # Log the call
@@ -169,7 +173,10 @@ class Agent:
             tool_names = " → " + ", ".join(
                 tc["function"]["name"] for tc in response_message["tool_calls"]
             )
-        logger.info(f"{model} | {tokens} tokens | {cost}{tool_names}")
+        logger.info(
+            f"{model} | {tokens} tokens | {cost} | "
+            f"{llm_elapsed:.1f}s{tool_names}"
+        )
         self.messages.append(response_message)
 
         # Run tools if present
@@ -178,9 +185,12 @@ class Agent:
                 tool_name = tool_call["function"]["name"]
                 tool = self.tools[tool_name]
                 tool_args = json.loads(tool_call["function"]["arguments"])
+                t0 = time.time()
                 tool_response = tool(**tool_args)(self) or "Success"
-                logger.debug(
-                    f"  {tool_name}({tool_args}) → {tool_response[:100]}"
+                tool_elapsed = time.time() - t0
+                logger.info(
+                    f"  {tool_name} → {tool_elapsed:.1f}s | "
+                    f"{tool_response[:120]}"
                 )
                 self.messages.append(
                     {
@@ -192,7 +202,12 @@ class Agent:
                     }
                 )
 
+        logger.info("Saving messages to DB...")
+        t0 = time.time()
         self.on_step(response_message)
+        save_elapsed = time.time() - t0
+        if save_elapsed > 0.5:
+            logger.info(f"  DB save took {save_elapsed:.1f}s")
         return response_message
 
     def on_step(self, response_message: dict):
