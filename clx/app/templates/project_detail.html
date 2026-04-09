@@ -923,7 +923,12 @@
                             <div class="flex items-center gap-2">
                                 <i class="fas fa-tag text-slate-500 text-xs"></i>
                                 <span class="text-sm text-slate-300" x-text="label.name"></span>
-                                <span x-show="label.stats?.total > 0" class="ml-auto text-[11px] text-slate-500" x-text="label.stats?.total + ' examples'"></span>
+                                <span class="ml-auto flex items-center gap-2">
+                                    <span class="text-[11px]" :class="label.instructions?.trim() ? 'text-emerald-500' : 'text-slate-600'" :title="label.instructions?.trim() ? 'Has instructions' : 'No instructions'">
+                                        <i class="fas" :class="label.instructions?.trim() ? 'fa-square-check' : 'fa-square'"></i>
+                                    </span>
+                                    <span x-show="label.stats?.total > 0" class="text-[11px] text-slate-500" x-text="label.stats?.total + ' examples'"></span>
+                                </span>
                             </div>
                             <template x-if="label.stats?.total > 0">
                                 <div class="mt-2">
