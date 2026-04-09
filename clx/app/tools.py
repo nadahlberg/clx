@@ -1,3 +1,5 @@
+import logging
+import time
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -7,6 +9,7 @@ from clx.app.search import Query
 from clx.llm.agent import Tool
 
 _su = ShortUUID()
+logger = logging.getLogger("clx.llm")
 
 
 class Search(Tool):
@@ -66,11 +69,20 @@ class Search(Tool):
             documents = documents.training_examples(label_id)
 
         if self.count_only:
+            t0 = time.time()
             total = documents.count()
+            logger.debug(f"    Search count query: {time.time() - t0:.1f}s")
             return f"{total} document(s) match."
 
         num_results = min(self.num_results, 100)
+        t0 = time.time()
         rows = list(documents.values_list("id", "text")[:num_results])
+        db_elapsed = time.time() - t0
+        query_desc = self.query.model_dump() if self.query else "all"
+        logger.debug(
+            f"    Search DB: {db_elapsed:.1f}s | "
+            f"{len(rows)} rows | query={query_desc}"
+        )
 
         # Generate a short search ID and store in agent state.
         search_id = _su.random(length=8)
