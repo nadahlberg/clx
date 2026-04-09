@@ -54,6 +54,14 @@ class Search(Tool):
             "Implies from_training_set."
         ),
     )
+    prediction: str | None = Field(
+        default=None,
+        description=(
+            "Filter by prediction value: 'yes', 'no', 'any' "
+            "(has any prediction), or 'disagree' (prediction differs "
+            "from agent annotation). Implies from_training_set."
+        ),
+    )
     count_only: bool = Field(
         default=False,
         description=(
@@ -68,7 +76,9 @@ class Search(Tool):
         documents = project.documents.order_by("shuffle_key")
         if self.query:
             documents = documents.text_query(self.query.model_dump())
-        if self.annotation:
+        if self.prediction:
+            documents = documents.filter_prediction(label_id, self.prediction)
+        elif self.annotation:
             documents = documents.filter_annotation(label_id, self.annotation)
         elif self.from_training_set:
             documents = documents.training_examples(label_id)
