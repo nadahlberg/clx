@@ -282,8 +282,9 @@
              }).then(r => r.json()).then(data => {
                  this.predicting = false;
                  if (data.error) { alert(data.error); return; }
-                 if (data.predicted_at && this.activeLabel) {
-                     this.activeLabel.predicted_at = data.predicted_at;
+                 if (this.activeLabel) {
+                     if (data.predicted_at) this.activeLabel.predicted_at = data.predicted_at;
+                     if (data.prediction_stats) this.activeLabel.prediction_stats = data.prediction_stats;
                  }
              }).catch(() => { this.predicting = false; });
          },
@@ -480,7 +481,7 @@
          }
      }"
      x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks();
-              setInterval(() => { if (!autopilotEnabled) return; fetchTasksQuiet(); fetch('/api/projects/{{ project.id }}/labels').then(r => r.json()).then(data => { for (const l of data.labels) { const existing = labels.find(x => x.id === l.id); if (existing) { existing.stats = l.stats; existing.instructions = l.instructions; existing.name = l.name; existing.finetune_status = l.finetune_status; existing.finetuned_at = l.finetuned_at; existing.predicted_at = l.predicted_at; } } if (!labels.some(l => data.labels.find(d => d.id === l.id)) || data.labels.length !== labels.length) { labels = data.labels; } if (activeLabel) { const updated = data.labels.find(l => l.id === activeLabel.id); if (updated) { activeLabel.stats = updated.stats; labelStats = updated.stats; const labelDirty = activeLabel.name !== _savedLabelName || (activeLabel.instructions || '') !== _savedLabelInstructions; if (!labelDirty) { activeLabel.name = updated.name; activeLabel.instructions = updated.instructions; } _savedLabelName = updated.name; _savedLabelInstructions = updated.instructions || ''; } } }); fetch('/api/projects/{{ project.id }}/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) }).then(r => r.json()).then(p => { const projDirty = projectName !== _savedProjectName || projectInstructions !== _savedProjectInstructions; if (!projDirty) { projectName = p.name; projectInstructions = p.instructions; } _savedProjectName = p.name; _savedProjectInstructions = p.instructions; }); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = JSON.stringify(newMsgs) !== JSON.stringify(chatMessages); if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } }, 5000)"
+              setInterval(() => { if (!autopilotEnabled) return; fetchTasksQuiet(); fetch('/api/projects/{{ project.id }}/labels').then(r => r.json()).then(data => { for (const l of data.labels) { const existing = labels.find(x => x.id === l.id); if (existing) { existing.stats = l.stats; existing.instructions = l.instructions; existing.name = l.name; existing.finetune_status = l.finetune_status; existing.finetuned_at = l.finetuned_at; existing.predicted_at = l.predicted_at; existing.prediction_stats = l.prediction_stats; } } if (!labels.some(l => data.labels.find(d => d.id === l.id)) || data.labels.length !== labels.length) { labels = data.labels; } if (activeLabel) { const updated = data.labels.find(l => l.id === activeLabel.id); if (updated) { activeLabel.stats = updated.stats; labelStats = updated.stats; const labelDirty = activeLabel.name !== _savedLabelName || (activeLabel.instructions || '') !== _savedLabelInstructions; if (!labelDirty) { activeLabel.name = updated.name; activeLabel.instructions = updated.instructions; } _savedLabelName = updated.name; _savedLabelInstructions = updated.instructions || ''; } } }); fetch('/api/projects/{{ project.id }}/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) }).then(r => r.json()).then(p => { const projDirty = projectName !== _savedProjectName || projectInstructions !== _savedProjectInstructions; if (!projDirty) { projectName = p.name; projectInstructions = p.instructions; } _savedProjectName = p.name; _savedProjectInstructions = p.instructions; }); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = JSON.stringify(newMsgs) !== JSON.stringify(chatMessages); if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } }, 5000)"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
@@ -1315,6 +1316,14 @@
                                 </span>
                             </template>
                         </div>
+                        <!-- Prediction stats -->
+                        <template x-if="activeLabel && activeLabel.prediction_stats && activeLabel.prediction_stats.f1 !== undefined">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-[10px] text-slate-500">F1 <span class="text-slate-400" x-text="(activeLabel.prediction_stats.f1 * 100).toFixed(1) + '%'"></span></span>
+                                <span class="text-[10px] text-slate-500">Acc <span class="text-slate-400" x-text="(activeLabel.prediction_stats.accuracy * 100).toFixed(1) + '%'"></span></span>
+                                <span class="text-[10px] text-slate-600 ml-auto" x-text="'n=' + activeLabel.prediction_stats.total"></span>
+                            </div>
+                        </template>
                         <!-- Progress bar (in_progress) -->
                         <template x-if="finetune && finetune.status === 'in_progress' && finetune.progress && finetune.progress.max_steps">
                             <div class="mb-2">

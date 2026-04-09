@@ -189,6 +189,7 @@ def project_labels_api(request, project_id):
                     "predicted_at": label.predicted_at.isoformat()
                     if label.predicted_at
                     else None,
+                    "prediction_stats": label.prediction_stats,
                     "stats": stats_by_label.get(
                         str(label.id),
                         {
@@ -634,6 +635,7 @@ def predict_label_api(request, project_id, label_id):
             "predicted_at": label.predicted_at.isoformat()
             if label.predicted_at
             else None,
+            "prediction_stats": label.prediction_stats,
         }
     )
 

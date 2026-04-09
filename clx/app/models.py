@@ -235,6 +235,7 @@ class Label(Base):
     finetuned_at = models.DateTimeField(null=True, blank=True)
     finetune_status = models.CharField(max_length=20, blank=True, default="")
     predicted_at = models.DateTimeField(null=True, blank=True)
+    prediction_stats = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [
@@ -401,24 +402,78 @@ class Label(Base):
 
         results = self.pipe.predict(texts, batch_size=16, return_scores=True)
 
-        # Bulk update predictions.
-        ld_objs = {ld_id: LabelDocument(id=ld_id) for ld_id in ld_ids}
+        # Build predictions map.
+        predictions = {}
         for ld_id, scores in zip(ld_ids, results):
-            obj = ld_objs[ld_id]
             yes_score = scores.get("yes", 0)
             no_score = scores.get("no", 0)
-            obj.prediction = "yes" if yes_score >= no_score else "no"
+            pred = "yes" if yes_score >= no_score else "no"
             top_score = max(yes_score, no_score)
-            obj.prediction_confidence = abs(top_score - 0.5) * 2
+            confidence = abs(top_score - 0.5) * 2
+            predictions[ld_id] = (pred, confidence)
+
+        # Bulk update predictions.
+        ld_objs = []
+        for ld_id, (pred, confidence) in predictions.items():
+            obj = LabelDocument(id=ld_id)
+            obj.prediction = pred
+            obj.prediction_confidence = confidence
+            ld_objs.append(obj)
 
         LabelDocument.objects.bulk_update(
-            list(ld_objs.values()),
+            ld_objs,
             ["prediction", "prediction_confidence"],
             batch_size=1000,
         )
 
+        # Compute F1 and accuracy on annotated examples (yes/no only).
+        annotated = dict(
+            ClassificationAnnotation.objects.filter(
+                label_document_id__in=ld_ids,
+                source="agent",
+                value__in=["yes", "no"],
+            ).values_list("label_document_id", "value")
+        )
+
+        if annotated:
+            tp = fp = fn = correct = 0
+            total = len(annotated)
+            for ld_id, true_val in annotated.items():
+                pred_val = predictions[ld_id][0]
+                if pred_val == true_val:
+                    correct += 1
+                if pred_val == "yes" and true_val == "yes":
+                    tp += 1
+                elif pred_val == "yes" and true_val == "no":
+                    fp += 1
+                elif pred_val == "no" and true_val == "yes":
+                    fn += 1
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if (precision + recall) > 0
+                else 0
+            )
+            self.prediction_stats = {
+                "f1": round(f1, 4),
+                "accuracy": round(correct / total, 4),
+                "precision": round(precision, 4),
+                "recall": round(recall, 4),
+                "total": total,
+            }
+        else:
+            self.prediction_stats = {}
+
         self.predicted_at = timezone.now()
-        self.save(update_fields=["predicted_at", "updated_at"])
+        self.save(
+            update_fields=[
+                "predicted_at",
+                "prediction_stats",
+                "updated_at",
+            ]
+        )
 
 
 class Prompt(Base):
