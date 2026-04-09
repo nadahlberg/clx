@@ -182,6 +182,7 @@ def project_labels_api(request, project_id):
                     "id": str(label.id),
                     "name": label.name,
                     "instructions": label.instructions,
+                    "finetune_status": label.finetune_status,
                     "stats": stats_by_label.get(
                         str(label.id),
                         {

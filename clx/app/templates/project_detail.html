@@ -464,7 +464,7 @@
          }
      }"
      x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks();
-              setInterval(() => { if (!autopilotEnabled) return; fetchTasksQuiet(); fetch('/api/projects/{{ project.id }}/labels').then(r => r.json()).then(data => { for (const l of data.labels) { const existing = labels.find(x => x.id === l.id); if (existing) { existing.stats = l.stats; existing.instructions = l.instructions; existing.name = l.name; } } if (!labels.some(l => data.labels.find(d => d.id === l.id)) || data.labels.length !== labels.length) { labels = data.labels; } if (activeLabel) { const updated = data.labels.find(l => l.id === activeLabel.id); if (updated) { activeLabel.stats = updated.stats; labelStats = updated.stats; const labelDirty = activeLabel.name !== _savedLabelName || (activeLabel.instructions || '') !== _savedLabelInstructions; if (!labelDirty) { activeLabel.name = updated.name; activeLabel.instructions = updated.instructions; } _savedLabelName = updated.name; _savedLabelInstructions = updated.instructions || ''; } } }); fetch('/api/projects/{{ project.id }}/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) }).then(r => r.json()).then(p => { const projDirty = projectName !== _savedProjectName || projectInstructions !== _savedProjectInstructions; if (!projDirty) { projectName = p.name; projectInstructions = p.instructions; } _savedProjectName = p.name; _savedProjectInstructions = p.instructions; }); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = JSON.stringify(newMsgs) !== JSON.stringify(chatMessages); if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } }, 5000)"
+              setInterval(() => { if (!autopilotEnabled) return; fetchTasksQuiet(); fetch('/api/projects/{{ project.id }}/labels').then(r => r.json()).then(data => { for (const l of data.labels) { const existing = labels.find(x => x.id === l.id); if (existing) { existing.stats = l.stats; existing.instructions = l.instructions; existing.name = l.name; existing.finetune_status = l.finetune_status; } } if (!labels.some(l => data.labels.find(d => d.id === l.id)) || data.labels.length !== labels.length) { labels = data.labels; } if (activeLabel) { const updated = data.labels.find(l => l.id === activeLabel.id); if (updated) { activeLabel.stats = updated.stats; labelStats = updated.stats; const labelDirty = activeLabel.name !== _savedLabelName || (activeLabel.instructions || '') !== _savedLabelInstructions; if (!labelDirty) { activeLabel.name = updated.name; activeLabel.instructions = updated.instructions; } _savedLabelName = updated.name; _savedLabelInstructions = updated.instructions || ''; } } }); fetch('/api/projects/{{ project.id }}/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) }).then(r => r.json()).then(p => { const projDirty = projectName !== _savedProjectName || projectInstructions !== _savedProjectInstructions; if (!projDirty) { projectName = p.name; projectInstructions = p.instructions; } _savedProjectName = p.name; _savedProjectInstructions = p.instructions; }); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = JSON.stringify(newMsgs) !== JSON.stringify(chatMessages); if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } }, 5000)"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
@@ -945,10 +945,21 @@
                             <div class="flex items-center gap-2">
                                 <i class="fas fa-tag text-slate-500 text-xs"></i>
                                 <span class="text-sm text-slate-300" x-text="label.name"></span>
-                                <span class="ml-auto flex items-center gap-1.5 text-[11px]" :class="label.instructions?.trim() ? 'text-emerald-500' : 'text-slate-600'">
-                                    <i class="fas" :class="label.instructions?.trim() ? 'fa-circle-check' : 'fa-circle'"></i>
-                                    <span x-text="label.instructions?.trim() ? 'Instructions' : 'Needs instructions'"></span>
-                                </span>
+                                <div class="ml-auto flex items-center gap-3">
+                                    <span class="flex items-center gap-1.5 text-[11px]" :class="label.instructions?.trim() ? 'text-emerald-500' : 'text-slate-600'">
+                                        <i class="fas" :class="label.instructions?.trim() ? 'fa-circle-check' : 'fa-circle'"></i>
+                                        <span x-text="label.instructions?.trim() ? 'Instructions' : 'Needs instructions'"></span>
+                                    </span>
+                                    <span x-show="label.finetune_status === 'completed'" class="flex items-center gap-1.5 text-[11px] text-indigo-400">
+                                        <i class="fas fa-circle-check text-[9px]"></i> Model
+                                    </span>
+                                    <span x-show="label.finetune_status === 'in_progress'" class="flex items-center gap-1.5 text-[11px] text-indigo-400">
+                                        <i class="fas fa-spinner fa-spin text-[9px]"></i> Training
+                                    </span>
+                                    <span x-show="label.finetune_status === 'error'" class="flex items-center gap-1.5 text-[11px] text-red-400">
+                                        <i class="fas fa-circle-xmark text-[9px]"></i> Error
+                                    </span>
+                                </div>
                             </div>
                             <template x-if="label.stats?.total > 0">
                                 <div class="mt-2">
@@ -1242,8 +1253,8 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Finetune section -->
-                    <div class="px-4 pt-3 pb-3 border-t border-slate-800/60">
+                    <!-- Finetune section (only when label has data) -->
+                    <div x-show="labelStats && labelStats.total > 0" x-cloak class="px-4 pt-3 pb-3 border-t border-slate-800/60">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[11px] font-medium text-slate-400">Model</span>
                             <!-- Status badge -->
