@@ -265,21 +265,18 @@ class Label(Base):
         )
 
         # Assemble data from annotated label documents (yes/no only).
-        ld_qs = (
-            LabelDocument.objects.filter(label=self)
-            .filter(
+        # Single query: join through to document text and annotation value.
+        rows = list(
+            LabelDocument.objects.filter(
+                label=self,
                 annotations__source="agent",
                 annotations__value__in=["yes", "no"],
+            ).values_list(
+                "document__text",
+                "annotations__value",
             )
-            .select_related("document")
         )
-        rows = []
-        for ld in ld_qs:
-            ann = ld.annotations.filter(source="agent").first()
-            if ann:
-                rows.append(
-                    {"text": ld.document.text, "label": ann.value}
-                )
+        rows = [{"text": text, "label": value} for text, value in rows]
 
         random.shuffle(rows)
         df = pd.DataFrame(rows)
