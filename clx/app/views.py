@@ -136,6 +136,47 @@ def project_labels_api(request, project_id):
     """GET: list labels for a project."""
     project = get_object_or_404(Project, id=project_id)
     labels = project.labels.order_by("name")
+
+    # Aggregate stats for all labels in a single query.
+    from .models import LabelDocument
+
+    stats_qs = (
+        LabelDocument.objects.filter(label__project=project)
+        .values("label_id")
+        .annotate(
+            total=Count("id"),
+            yes=Count(
+                "id",
+                filter=Q(
+                    annotations__value="yes", annotations__source="agent"
+                ),
+            ),
+            no=Count(
+                "id",
+                filter=Q(
+                    annotations__value="no", annotations__source="agent"
+                ),
+            ),
+            skip=Count(
+                "id",
+                filter=Q(
+                    annotations__value="skip", annotations__source="agent"
+                ),
+            ),
+        )
+    )
+    stats_by_label = {}
+    for row in stats_qs:
+        lid = str(row["label_id"])
+        total = row["total"]
+        stats_by_label[lid] = {
+            "total": total,
+            "yes": row["yes"],
+            "no": row["no"],
+            "skip": row["skip"],
+            "unannotated": total - row["yes"] - row["no"] - row["skip"],
+        }
+
     return JsonResponse(
         {
             "labels": [
@@ -143,6 +184,16 @@ def project_labels_api(request, project_id):
                     "id": str(label.id),
                     "name": label.name,
                     "instructions": label.instructions,
+                    "stats": stats_by_label.get(
+                        str(label.id),
+                        {
+                            "total": 0,
+                            "yes": 0,
+                            "no": 0,
+                            "skip": 0,
+                            "unannotated": 0,
+                        },
+                    ),
                 }
                 for label in labels
             ],
