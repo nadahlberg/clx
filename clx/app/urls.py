@@ -38,6 +38,14 @@ urlpatterns = [
         views.label_stats_api,
     ),
     path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/finetune",
+        views.finetune_label_api,
+    ),
+    path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/finetune/status",
+        views.finetune_status_api,
+    ),
+    path(
         "api/projects/<str:project_id>/prompts",
         views.project_prompts_api,
     ),

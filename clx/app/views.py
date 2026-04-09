@@ -609,6 +609,147 @@ def delete_thread_api(request, project_id, thread_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def finetune_label_api(request, project_id, label_id):
+    """POST: kick off a finetuning job for a label."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    if label.finetune_status == "in_progress":
+        return JsonResponse(
+            {"error": "Finetune already in progress."}, status=409
+        )
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = {}
+    training_args = data.get("training_args") or None
+    try:
+        job_id = label.finetune(training_args=training_args)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse(
+        {"job_id": job_id, "status": label.finetune_status}
+    )
+
+
+@require_GET
+def finetune_status_api(request, project_id, label_id):
+    """GET: check finetune status for a label."""
+    import os
+
+    import requests as http_requests
+
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+
+    if label.finetune_status != "in_progress" or not label.finetune_id:
+        # Find latest annotation updated_at for staleness check.
+        from .models import ClassificationAnnotation
+
+        latest_annotation = (
+            ClassificationAnnotation.objects.filter(
+                label_document__label=label,
+                source="agent",
+                value__in=["yes", "no"],
+            )
+            .order_by("-updated_at")
+            .values_list("updated_at", flat=True)
+            .first()
+        )
+        return JsonResponse(
+            {
+                "status": label.finetune_status,
+                "finetuned_at": label.finetuned_at.isoformat()
+                if label.finetuned_at
+                else None,
+                "training_args": label.finetune_training_args,
+                "latest_annotation_at": latest_annotation.isoformat()
+                if latest_annotation
+                else None,
+            }
+        )
+
+    # Poll RunPod for job status.
+    endpoint_id = os.getenv("RUNPOD_FINETUNE_ENDPOINT_ID")
+    api_key = os.getenv("RUNPOD_API_KEY")
+    progress = None
+
+    if endpoint_id and api_key:
+        try:
+            resp = http_requests.get(
+                f"https://api.runpod.ai/v2/{endpoint_id}/status/{label.finetune_id}",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            status_data = resp.json()
+
+            if status_data["status"] == "COMPLETED":
+                from django.utils import timezone
+
+                label.finetune_status = "completed"
+                label.finetuned_at = timezone.now()
+                label.save(
+                    update_fields=[
+                        "finetune_status",
+                        "finetuned_at",
+                        "updated_at",
+                    ]
+                )
+            elif status_data["status"] in ("FAILED", "CANCELLED"):
+                label.finetune_status = "error"
+                label.save(
+                    update_fields=["finetune_status", "updated_at"]
+                )
+            else:
+                progress = status_data.get("output", {})
+        except Exception:
+            # RunPod unreachable or job expired — try the pipeline.
+            try:
+                label.pipe.predict(["test"], batch_size=1)
+                from django.utils import timezone
+
+                label.finetune_status = "completed"
+                label.finetuned_at = timezone.now()
+                label.save(
+                    update_fields=[
+                        "finetune_status",
+                        "finetuned_at",
+                        "updated_at",
+                    ]
+                )
+            except Exception:
+                pass
+
+    from .models import ClassificationAnnotation
+
+    latest_annotation = (
+        ClassificationAnnotation.objects.filter(
+            label_document__label=label,
+            source="agent",
+            value__in=["yes", "no"],
+        )
+        .order_by("-updated_at")
+        .values_list("updated_at", flat=True)
+        .first()
+    )
+
+    return JsonResponse(
+        {
+            "status": label.finetune_status,
+            "finetuned_at": label.finetuned_at.isoformat()
+            if label.finetuned_at
+            else None,
+            "training_args": label.finetune_training_args,
+            "progress": progress,
+            "latest_annotation_at": latest_annotation.isoformat()
+            if latest_annotation
+            else None,
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def send_message_api(request, project_id, thread_id):
     """POST: send a user message and get an agent response."""
     project = get_object_or_404(Project, id=project_id)

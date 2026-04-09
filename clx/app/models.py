@@ -230,6 +230,10 @@ class Label(Base):
         blank=True,
         related_name="+",
     )
+    finetune_id = models.CharField(max_length=255, blank=True, default="")
+    finetune_training_args = models.JSONField(default=dict, blank=True)
+    finetuned_at = models.DateTimeField(null=True, blank=True)
+    finetune_status = models.CharField(max_length=20, blank=True, default="")
 
     class Meta:
         constraints = [
@@ -238,6 +242,128 @@ class Label(Base):
                 name="label_project_name_uniq",
             )
         ]
+
+    def finetune(self, training_args=None):
+        """Kick off a remote finetuning job for this label."""
+        import os
+        import random
+
+        import pandas as pd
+        import requests
+
+        from clx.utils import S3
+
+        training_args = training_args or {}
+        self.finetune_training_args = training_args
+        self.finetune_status = "pending"
+        self.save(
+            update_fields=[
+                "finetune_training_args",
+                "finetune_status",
+                "updated_at",
+            ]
+        )
+
+        # Assemble data from annotated label documents (yes/no only).
+        ld_qs = (
+            LabelDocument.objects.filter(label=self)
+            .filter(
+                annotations__source="agent",
+                annotations__value__in=["yes", "no"],
+            )
+            .select_related("document")
+        )
+        rows = []
+        for ld in ld_qs:
+            ann = ld.annotations.filter(source="agent").first()
+            if ann:
+                rows.append(
+                    {"text": ld.document.text, "label": ann.value}
+                )
+
+        random.shuffle(rows)
+        df = pd.DataFrame(rows)
+        split = max(1, int(len(df) * 0.2))
+        eval_data = df.iloc[:split]
+        train_data = df.iloc[split:]
+
+        # Build training run config.
+        from clx.ml import training_run
+
+        run = training_run(
+            task="classification",
+            run_name=str(self.id),
+            label_names=["yes", "no"],
+            training_args=training_args,
+        )
+
+        # Upload data to S3 and submit to RunPod.
+        import tempfile
+        import uuid as _uuid
+        from pathlib import Path
+
+        endpoint_id = os.getenv("RUNPOD_FINETUNE_ENDPOINT_ID")
+        api_key = os.getenv("RUNPOD_API_KEY")
+        if not endpoint_id or not api_key:
+            self.finetune_status = "error"
+            self.save(update_fields=["finetune_status", "updated_at"])
+            raise ValueError(
+                "RUNPOD_FINETUNE_ENDPOINT_ID and RUNPOD_API_KEY must be set"
+            )
+
+        s3 = S3()
+        job_key = str(_uuid.uuid4())
+        s3_prefix = f"runpod/finetune/{job_key}"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            train_path = Path(tmpdir) / "train.csv"
+            train_data.to_csv(train_path, index=False)
+            s3.upload(train_path, f"{s3_prefix}/train.csv")
+            eval_path = Path(tmpdir) / "eval.csv"
+            eval_data.to_csv(eval_path, index=False)
+            s3.upload(eval_path, f"{s3_prefix}/eval.csv")
+
+        config = run.config
+        del config["run_dir_parent"]
+        payload = {
+            "input": {
+                "training_run": config,
+                "s3_bucket": s3.bucket,
+                "s3_prefix": s3_prefix,
+                "overwrite": True,
+            }
+        }
+
+        response = requests.post(
+            f"https://api.runpod.ai/v2/{endpoint_id}/run",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=payload,
+        )
+        response.raise_for_status()
+        job_id = response.json()["id"]
+
+        self.finetune_id = job_id
+        self.finetune_status = "in_progress"
+        self.save(
+            update_fields=[
+                "finetune_id",
+                "finetune_status",
+                "updated_at",
+            ]
+        )
+        return job_id
+
+    @property
+    def pipe(self):
+        """Remote classification pipeline for the finetuned model."""
+        from clx.ml import pipeline
+
+        model_path = f"/runpod-volume/clx/runs/{self.id}/model"
+        return pipeline(
+            task="classification",
+            model=model_path,
+            remote=True,
+        )
 
 
 class Prompt(Base):

@@ -49,6 +49,10 @@
          chatSending: false,
          threadUsage: null,
          labelStats: null,
+         finetune: null,
+         finetunePolling: null,
+         finetuneStarting: false,
+         finetuneArgsOpen: false,
          selectedModel: '{{ default_model }}',
          modelDropdownOpen: false,
          modelIds: {{ model_ids|safe }},
@@ -220,12 +224,52 @@
                          this._savedLabelInstructions = this.activeLabel.instructions || '';
                          this.fetchThreads();
                          this.fetchLabelStats();
+                         this.fetchFinetune();
                      }
                  });
          },
          fetchLabelStats() {
              if (!this.activeLabel) { this.labelStats = null; return; }
              this.labelStats = this.activeLabel.stats || null;
+         },
+         fetchFinetune() {
+             if (!this.activeLabel) { this.finetune = null; return; }
+             fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/finetune/status')
+                 .then(r => r.json())
+                 .then(data => {
+                     this.finetune = data;
+                     if (data.status === 'in_progress' && !this.finetunePolling) {
+                         this.startFinetunePolling();
+                     } else if (data.status !== 'in_progress' && this.finetunePolling) {
+                         this.stopFinetunePolling();
+                     }
+                 });
+         },
+         startFinetunePolling() {
+             if (this.finetunePolling) return;
+             this.finetunePolling = setInterval(() => { this.fetchFinetune(); }, 5000);
+         },
+         stopFinetunePolling() {
+             if (this.finetunePolling) { clearInterval(this.finetunePolling); this.finetunePolling = null; }
+         },
+         startFinetune() {
+             if (!this.activeLabel || this.finetuneStarting) return;
+             this.finetuneStarting = true;
+             fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/finetune', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({})
+             }).then(r => r.json()).then(data => {
+                 this.finetuneStarting = false;
+                 if (data.error) { alert(data.error); return; }
+                 this.fetchFinetune();
+             }).catch(() => { this.finetuneStarting = false; });
+         },
+         finetuneIsUpToDate() {
+             if (!this.finetune || this.finetune.status !== 'completed') return false;
+             if (!this.finetune.finetuned_at) return false;
+             if (!this.finetune.latest_annotation_at) return true;
+             return this.finetune.finetuned_at >= this.finetune.latest_annotation_at;
          },
          fetchThreads() {
              if (!this.activeLabel) { this.threads = []; return Promise.resolve(); }
@@ -250,6 +294,9 @@
          switchLabel(label) {
              this.labelDropdownOpen = false;
              if (this.activeLabel && this.activeLabel.id === label.id) return;
+             this.stopFinetunePolling();
+             this.finetune = null;
+             this.finetuneArgsOpen = false;
              this.activeLabel = label;
              this._savedLabelName = label.name;
              this._savedLabelInstructions = label.instructions || '';
@@ -260,6 +307,7 @@
              fetch('/api/projects/{{ project.id }}/labels/' + label.id + '/activate', { method: 'POST' });
              this.fetchThreads();
              this.fetchLabelStats();
+             this.fetchFinetune();
              if (this.activeTab !== 'agent') this.fetchDocs();
          },
          createLabel() {
@@ -1193,6 +1241,78 @@
                                 <span class="text-[10px] text-slate-400 ml-auto" x-text="labelStats?.unannotated || 0"></span>
                             </div>
                         </div>
+                    </div>
+                    <!-- Finetune section -->
+                    <div class="px-4 pt-3 pb-3 border-t border-slate-800/60">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-medium text-slate-400">Model</span>
+                            <!-- Status badge -->
+                            <template x-if="finetune && finetune.status === 'completed' && finetuneIsUpToDate()">
+                                <span class="text-[10px] text-emerald-400 flex items-center gap-1">
+                                    <i class="fas fa-circle-check text-[9px]"></i> Up to date
+                                </span>
+                            </template>
+                            <template x-if="finetune && finetune.status === 'completed' && !finetuneIsUpToDate()">
+                                <span class="text-[10px] text-amber-400 flex items-center gap-1">
+                                    <i class="fas fa-triangle-exclamation text-[9px]"></i> Out of date
+                                </span>
+                            </template>
+                            <template x-if="finetune && finetune.status === 'error'">
+                                <span class="text-[10px] text-red-400 flex items-center gap-1">
+                                    <i class="fas fa-circle-xmark text-[9px]"></i> Error
+                                </span>
+                            </template>
+                            <template x-if="finetune && finetune.status === 'in_progress'">
+                                <span class="text-[10px] text-indigo-400 flex items-center gap-1">
+                                    <i class="fas fa-spinner fa-spin text-[9px]"></i> Training
+                                </span>
+                            </template>
+                        </div>
+                        <!-- Progress bar (in_progress) -->
+                        <template x-if="finetune && finetune.status === 'in_progress' && finetune.progress && finetune.progress.max_steps">
+                            <div class="mb-2">
+                                <div class="flex h-1.5 rounded-full overflow-hidden bg-slate-800">
+                                    <div class="bg-indigo-500 transition-all rounded-full"
+                                         :style="'width:' + (finetune.progress.step / finetune.progress.max_steps * 100) + '%'"></div>
+                                </div>
+                                <div class="flex justify-between mt-1">
+                                    <span class="text-[10px] text-slate-500" x-text="'Step ' + (finetune.progress.step || 0) + ' / ' + finetune.progress.max_steps"></span>
+                                    <span class="text-[10px] text-slate-500" x-text="Math.round((finetune.progress.step || 0) / finetune.progress.max_steps * 100) + '%'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Progress bar (in_progress, no step info yet) -->
+                        <template x-if="finetune && finetune.status === 'in_progress' && (!finetune.progress || !finetune.progress.max_steps)">
+                            <div class="mb-2">
+                                <div class="flex h-1.5 rounded-full overflow-hidden bg-slate-800">
+                                    <div class="bg-indigo-500/50 rounded-full animate-pulse w-full"></div>
+                                </div>
+                                <span class="text-[10px] text-slate-500 mt-1 block">Starting...</span>
+                            </div>
+                        </template>
+                        <!-- Training args (collapsed, only when completed) -->
+                        <template x-if="finetune && finetune.status === 'completed' && finetune.training_args && Object.keys(finetune.training_args).length > 0">
+                            <div class="mb-2">
+                                <button @click="finetuneArgsOpen = !finetuneArgsOpen"
+                                        class="text-[10px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+                                    <i class="fas text-[8px] transition-transform" :class="finetuneArgsOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                    Training Args
+                                </button>
+                                <div x-show="finetuneArgsOpen" x-cloak class="mt-1">
+                                    <pre class="text-[10px] text-slate-400 bg-slate-800 rounded-md p-2 overflow-x-auto max-h-32 scrollable-panel scrollable-dark" x-text="JSON.stringify(finetune.training_args, null, 2)"></pre>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Run finetune button -->
+                        <button @click="startFinetune()"
+                                :disabled="(finetune && finetune.status === 'in_progress') || finetuneStarting"
+                                class="w-full px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5"
+                                :class="(finetune && finetune.status === 'in_progress') || finetuneStarting
+                                    ? 'bg-slate-800 border border-slate-700 text-slate-600 cursor-not-allowed'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-500'">
+                            <i class="fas fa-bolt text-[10px]"></i>
+                            <span x-text="finetuneStarting ? 'Starting...' : (finetune && finetune.status === 'in_progress' ? 'Training...' : 'Run Finetune')"></span>
+                        </button>
                     </div>
                 </div>
             </div>
