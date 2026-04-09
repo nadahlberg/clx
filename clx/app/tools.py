@@ -38,6 +38,10 @@ class Search(Tool):
     num_results: int = Field(
         default=10, description="Number of results to return (max 1000)"
     )
+    offset: int = Field(
+        default=0,
+        description="Number of results to skip (for pagination).",
+    )
 
     from_training_set: bool = Field(
         default=False,
@@ -91,7 +95,7 @@ class Search(Tool):
 
         num_results = min(self.num_results, 1000)
         t0 = time.time()
-        rows = list(documents.values_list("id", "text")[:num_results])
+        rows = list(documents.values_list("id", "text")[self.offset:self.offset + num_results])
         db_elapsed = time.time() - t0
         query_desc = self.query.model_dump() if self.query else "all"
         logger.debug(
