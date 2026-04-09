@@ -284,14 +284,32 @@ class Label(Base):
         eval_data = df.iloc[:split]
         train_data = df.iloc[split:]
 
-        # Build training run config.
+        # Build training args with sensible defaults.
+        import math
+
         from clx.ml import training_run
+
+        batch_size = training_args.get("per_device_train_batch_size", 8)
+        grad_accum = training_args.get("gradient_accumulation_steps", 1)
+        effective_batch = batch_size * grad_accum
+        steps_per_epoch = max(1, math.ceil(len(train_data) / effective_batch))
+        checkpoint_steps = max(1, steps_per_epoch // 5)
+
+        defaults = {
+            "per_device_train_batch_size": batch_size,
+            "per_device_eval_batch_size": batch_size,
+            "gradient_accumulation_steps": grad_accum,
+            "eval_strategy": "steps",
+            "eval_steps": checkpoint_steps,
+            "save_steps": checkpoint_steps,
+        }
+        merged_args = {**defaults, **training_args}
 
         run = training_run(
             task="classification",
             run_name=str(self.id),
             label_names=["yes", "no"],
-            training_args=training_args,
+            training_args=merged_args,
         )
 
         # Upload data to S3 and submit to RunPod.
