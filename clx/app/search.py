@@ -244,6 +244,29 @@ class SearchQuerySet(CopyQuerySet):
             return qs.filter(annotation_value__isnull=False)
         return qs.filter(annotation_value=value)
 
+    def with_prediction(self, label_id: str) -> SearchQuerySet:
+        """Annotate each document with its prediction value and confidence.
+
+        Adds `prediction_value` (str or None) and `prediction_confidence`
+        (float or None) fields to each row.
+        """
+        from clx.app.models import LabelDocument
+
+        return self.annotate(
+            prediction_value=Subquery(
+                LabelDocument.objects.filter(
+                    document=OuterRef("pk"),
+                    label_id=label_id,
+                ).values("prediction")[:1]
+            ),
+            prediction_confidence_value=Subquery(
+                LabelDocument.objects.filter(
+                    document=OuterRef("pk"),
+                    label_id=label_id,
+                ).values("prediction_confidence")[:1]
+            ),
+        )
+
     def filter_prediction(
         self, label_id: str, value: str
     ) -> SearchQuerySet:

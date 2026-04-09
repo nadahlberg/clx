@@ -951,10 +951,18 @@
                         <template x-for="doc in documents" :key="doc.id">
                             <div class="px-4 py-3 border-b border-slate-800 border-l-2 border-l-transparent hover:border-l-indigo-500 hover:bg-slate-800/50 transition-colors cursor-default flex items-start gap-2">
                                 <p class="text-sm text-slate-300 flex-1" x-text="doc.text"></p>
-                                <span x-show="doc.annotation"
-                                      class="shrink-0 mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase"
-                                      :class="doc.annotation === 'yes' ? 'bg-emerald-900/50 text-emerald-400' : doc.annotation === 'no' ? 'bg-red-900/50 text-red-400' : 'bg-amber-900/50 text-amber-400'"
-                                      x-text="doc.annotation"></span>
+                                <div class="shrink-0 flex items-center gap-1 mt-0.5">
+                                    <span x-show="doc.annotation"
+                                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase"
+                                          :class="doc.annotation === 'yes' ? 'bg-emerald-900/50 text-emerald-400' : doc.annotation === 'no' ? 'bg-red-900/50 text-red-400' : 'bg-amber-900/50 text-amber-400'"
+                                          x-text="doc.annotation"></span>
+                                    <span x-show="doc.prediction"
+                                          class="inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-semibold uppercase"
+                                          :class="doc.prediction === 'yes' ? 'border-emerald-600/50 text-emerald-500' : 'border-red-600/50 text-red-500'"
+                                          :title="doc.prediction_confidence != null ? (doc.prediction_confidence * 100).toFixed(0) + '% confidence' : ''">
+                                        <i class="fas fa-circle-nodes text-[8px] mr-1 opacity-60"></i><span x-text="doc.prediction"></span>
+                                    </span>
+                                </div>
                             </div>
                         </template>
                         <div x-show="documents.length === 0" class="flex items-center justify-center py-12">

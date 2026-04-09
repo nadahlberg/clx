@@ -102,9 +102,11 @@ def project_docs_api(request, project_id):
     documents, label_id, has_annotation_col = _filtered_documents(
         project, request
     )
-    # Attach annotation values in a single subquery when a label is active.
+    # Attach annotation and prediction values via subqueries when a label is active.
     if label_id and not has_annotation_col:
         documents = documents.with_annotation(label_id)
+    if label_id:
+        documents = documents.with_prediction(label_id)
     # Fetch one extra to detect if there's a next page, avoiding COUNT query.
     offset = (page_number - 1) * DOCS_PER_PAGE
     batch = list(documents[offset : offset + DOCS_PER_PAGE + 1])
@@ -119,6 +121,10 @@ def project_docs_api(request, project_id):
                     "text_prefix": d.text_prefix,
                     "meta": d.meta,
                     "annotation": getattr(d, "annotation_value", None),
+                    "prediction": getattr(d, "prediction_value", None) or None,
+                    "prediction_confidence": getattr(
+                        d, "prediction_confidence_value", None
+                    ),
                 }
                 for d in page_docs
             ],
