@@ -183,6 +183,12 @@ def project_labels_api(request, project_id):
                     "name": label.name,
                     "instructions": label.instructions,
                     "finetune_status": label.finetune_status,
+                    "finetuned_at": label.finetuned_at.isoformat()
+                    if label.finetuned_at
+                    else None,
+                    "predicted_at": label.predicted_at.isoformat()
+                    if label.predicted_at
+                    else None,
                     "stats": stats_by_label.get(
                         str(label.id),
                         {

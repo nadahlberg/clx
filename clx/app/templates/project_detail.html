@@ -281,7 +281,10 @@
                  body: JSON.stringify({})
              }).then(r => r.json()).then(data => {
                  this.predicting = false;
-                 if (data.error) { alert(data.error); }
+                 if (data.error) { alert(data.error); return; }
+                 if (data.predicted_at && this.activeLabel) {
+                     this.activeLabel.predicted_at = data.predicted_at;
+                 }
              }).catch(() => { this.predicting = false; });
          },
          fetchThreads() {
@@ -477,7 +480,7 @@
          }
      }"
      x-init="fetchDocs(); fetchLabels(); fetchPrompts(); fetchTasks();
-              setInterval(() => { if (!autopilotEnabled) return; fetchTasksQuiet(); fetch('/api/projects/{{ project.id }}/labels').then(r => r.json()).then(data => { for (const l of data.labels) { const existing = labels.find(x => x.id === l.id); if (existing) { existing.stats = l.stats; existing.instructions = l.instructions; existing.name = l.name; existing.finetune_status = l.finetune_status; } } if (!labels.some(l => data.labels.find(d => d.id === l.id)) || data.labels.length !== labels.length) { labels = data.labels; } if (activeLabel) { const updated = data.labels.find(l => l.id === activeLabel.id); if (updated) { activeLabel.stats = updated.stats; labelStats = updated.stats; const labelDirty = activeLabel.name !== _savedLabelName || (activeLabel.instructions || '') !== _savedLabelInstructions; if (!labelDirty) { activeLabel.name = updated.name; activeLabel.instructions = updated.instructions; } _savedLabelName = updated.name; _savedLabelInstructions = updated.instructions || ''; } } }); fetch('/api/projects/{{ project.id }}/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) }).then(r => r.json()).then(p => { const projDirty = projectName !== _savedProjectName || projectInstructions !== _savedProjectInstructions; if (!projDirty) { projectName = p.name; projectInstructions = p.instructions; } _savedProjectName = p.name; _savedProjectInstructions = p.instructions; }); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = JSON.stringify(newMsgs) !== JSON.stringify(chatMessages); if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } }, 5000)"
+              setInterval(() => { if (!autopilotEnabled) return; fetchTasksQuiet(); fetch('/api/projects/{{ project.id }}/labels').then(r => r.json()).then(data => { for (const l of data.labels) { const existing = labels.find(x => x.id === l.id); if (existing) { existing.stats = l.stats; existing.instructions = l.instructions; existing.name = l.name; existing.finetune_status = l.finetune_status; existing.finetuned_at = l.finetuned_at; existing.predicted_at = l.predicted_at; } } if (!labels.some(l => data.labels.find(d => d.id === l.id)) || data.labels.length !== labels.length) { labels = data.labels; } if (activeLabel) { const updated = data.labels.find(l => l.id === activeLabel.id); if (updated) { activeLabel.stats = updated.stats; labelStats = updated.stats; const labelDirty = activeLabel.name !== _savedLabelName || (activeLabel.instructions || '') !== _savedLabelInstructions; if (!labelDirty) { activeLabel.name = updated.name; activeLabel.instructions = updated.instructions; } _savedLabelName = updated.name; _savedLabelInstructions = updated.instructions || ''; } } }); fetch('/api/projects/{{ project.id }}/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) }).then(r => r.json()).then(p => { const projDirty = projectName !== _savedProjectName || projectInstructions !== _savedProjectInstructions; if (!projDirty) { projectName = p.name; projectInstructions = p.instructions; } _savedProjectName = p.name; _savedProjectInstructions = p.instructions; }); if (activeThread && activeThread.is_autopilot) { const tid = activeThread.id; fetch('/api/projects/{{ project.id }}/threads/' + tid + '/messages').then(r => r.json()).then(data => { if (activeThread && activeThread.id === tid) { const newMsgs = data.messages.map(m => m.data).filter(d => d.role !== 'system'); const changed = JSON.stringify(newMsgs) !== JSON.stringify(chatMessages); if (changed) { chatMessages = newMsgs; $nextTick(() => { scrollChat(); }); } threadUsage = data.usage; activeThread.autopilot_locked = data.autopilot_locked; } }); } }, 5000)"
      class="flex-1 min-h-0 flex flex-col bg-slate-950">
 
     <!-- Page-level navbar -->
@@ -972,6 +975,12 @@
                                     <span x-show="label.finetune_status === 'error'" class="flex items-center gap-1.5 text-[11px] text-red-400">
                                         <i class="fas fa-circle-xmark text-[9px]"></i> Error
                                     </span>
+                                    <span x-show="label.finetune_status === 'completed' && label.predicted_at && label.predicted_at >= label.finetuned_at" class="flex items-center gap-1.5 text-[11px] text-teal-400">
+                                        <i class="fas fa-circle-check text-[9px]"></i> Predicted
+                                    </span>
+                                    <span x-show="label.finetune_status === 'completed' && (!label.predicted_at || label.predicted_at < label.finetuned_at)" class="flex items-center gap-1.5 text-[11px] text-slate-500">
+                                        <i class="fas fa-circle text-[9px]"></i> Needs predictions
+                                    </span>
                                 </div>
                             </div>
                             <template x-if="label.stats?.total > 0">
@@ -1289,6 +1298,20 @@
                             <template x-if="finetune && finetune.status === 'in_progress'">
                                 <span class="text-[10px] text-indigo-400 flex items-center gap-1">
                                     <i class="fas fa-spinner fa-spin text-[9px]"></i> Training
+                                </span>
+                            </template>
+                        </div>
+                        <!-- Prediction status -->
+                        <div x-show="finetune && finetune.status === 'completed'" class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-medium text-slate-400">Predictions</span>
+                            <template x-if="activeLabel && activeLabel.predicted_at && activeLabel.finetuned_at && activeLabel.predicted_at >= activeLabel.finetuned_at">
+                                <span class="text-[10px] text-teal-400 flex items-center gap-1">
+                                    <i class="fas fa-circle-check text-[9px]"></i> Predicted
+                                </span>
+                            </template>
+                            <template x-if="!activeLabel || !activeLabel.predicted_at || !activeLabel.finetuned_at || activeLabel.predicted_at < activeLabel.finetuned_at">
+                                <span class="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <i class="fas fa-circle text-[9px]"></i> Needs predictions
                                 </span>
                             </template>
                         </div>
