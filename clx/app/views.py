@@ -594,6 +594,11 @@ def send_message_api(request, project_id, thread_id):
             data=msg_data,
             num_tokens=message_tokens(msg_data),
         )
+        # Mark any awaiting_input task for this label as pending.
+        Task.objects.filter(
+            label=thread.label,
+            status=Task.Status.AWAITING_INPUT,
+        ).update(status=Task.Status.PENDING)
         total_tokens = _active_token_count(thread)
         return JsonResponse(
             {
