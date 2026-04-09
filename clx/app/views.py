@@ -610,6 +610,30 @@ def delete_thread_api(request, project_id, thread_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def predict_label_api(request, project_id, label_id):
+    """POST: run predictions for a label using its finetuned model."""
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    if label.finetune_status != "completed":
+        return JsonResponse(
+            {"error": "No completed finetune available."}, status=400
+        )
+    try:
+        label.predict()
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse(
+        {
+            "status": "ok",
+            "predicted_at": label.predicted_at.isoformat()
+            if label.predicted_at
+            else None,
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def finetune_label_api(request, project_id, label_id):
     """POST: kick off a finetuning job for a label."""
     project = get_object_or_404(Project, id=project_id)

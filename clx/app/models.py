@@ -234,6 +234,7 @@ class Label(Base):
     finetune_training_args = models.JSONField(default=dict, blank=True)
     finetuned_at = models.DateTimeField(null=True, blank=True)
     finetune_status = models.CharField(max_length=20, blank=True, default="")
+    predicted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -381,6 +382,44 @@ class Label(Base):
             remote=True,
         )
 
+    def predict(self):
+        """Run predictions across all label documents using the finetuned model."""
+        from django.utils import timezone
+
+        if self.finetune_status != "completed":
+            raise ValueError("No completed finetune available.")
+
+        ld_qs = LabelDocument.objects.filter(label=self).select_related(
+            "document"
+        )
+        ld_list = list(ld_qs.values_list("id", "document__text"))
+        if not ld_list:
+            return
+
+        ld_ids = [row[0] for row in ld_list]
+        texts = [row[1] for row in ld_list]
+
+        results = self.pipe.predict(texts, batch_size=16, return_scores=True)
+
+        # Bulk update predictions.
+        ld_objs = {ld_id: LabelDocument(id=ld_id) for ld_id in ld_ids}
+        for ld_id, scores in zip(ld_ids, results):
+            obj = ld_objs[ld_id]
+            yes_score = scores.get("yes", 0)
+            no_score = scores.get("no", 0)
+            obj.prediction = "yes" if yes_score >= no_score else "no"
+            top_score = max(yes_score, no_score)
+            obj.prediction_confidence = abs(top_score - 0.5) * 2
+
+        LabelDocument.objects.bulk_update(
+            list(ld_objs.values()),
+            ["prediction", "prediction_confidence"],
+            batch_size=1000,
+        )
+
+        self.predicted_at = timezone.now()
+        self.save(update_fields=["predicted_at", "updated_at"])
+
 
 class Prompt(Base):
     """A customizable prompt template for a project."""
@@ -425,6 +464,10 @@ class LabelDocument(Base):
     document = models.ForeignKey(
         "Document", on_delete=models.CASCADE, related_name="label_documents"
     )
+    prediction = models.CharField(
+        max_length=3, blank=True, default="", choices=[("yes", "yes"), ("no", "no")]
+    )
+    prediction_confidence = models.FloatField(null=True, blank=True)
 
     class Meta:
         constraints = [

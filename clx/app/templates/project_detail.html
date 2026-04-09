@@ -53,6 +53,7 @@
          finetunePolling: null,
          finetuneStarting: false,
          finetuneArgsOpen: false,
+         predicting: false,
          selectedModel: '{{ default_model }}',
          modelDropdownOpen: false,
          modelIds: {{ model_ids|safe }},
@@ -270,6 +271,18 @@
              if (!this.finetune.finetuned_at) return false;
              if (!this.finetune.latest_annotation_at) return true;
              return this.finetune.finetuned_at >= this.finetune.latest_annotation_at;
+         },
+         runPredictions() {
+             if (!this.activeLabel || this.predicting) return;
+             this.predicting = true;
+             fetch('/api/projects/{{ project.id }}/labels/' + this.activeLabel.id + '/predict', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({})
+             }).then(r => r.json()).then(data => {
+                 this.predicting = false;
+                 if (data.error) { alert(data.error); }
+             }).catch(() => { this.predicting = false; });
          },
          fetchThreads() {
              if (!this.activeLabel) { this.threads = []; return Promise.resolve(); }
@@ -1323,6 +1336,17 @@
                                     : 'bg-indigo-600 text-white hover:bg-indigo-500'">
                             <i class="fas fa-circle-nodes text-[10px]"></i>
                             <span x-text="finetuneStarting ? 'Starting...' : (finetune && finetune.status === 'in_progress' ? 'Training...' : 'Run Finetune')"></span>
+                        </button>
+                        <!-- Run predictions button (only when finetune completed) -->
+                        <button x-show="finetune && finetune.status === 'completed'"
+                                @click="runPredictions()"
+                                :disabled="predicting"
+                                class="w-full mt-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors flex items-center justify-center gap-1.5"
+                                :class="predicting
+                                    ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
+                                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'">
+                            <i class="fas text-[10px]" :class="predicting ? 'fa-spinner fa-spin' : 'fa-play'"></i>
+                            <span x-text="predicting ? 'Predicting...' : 'Run Predictions'"></span>
                         </button>
                     </div>
                 </div>
