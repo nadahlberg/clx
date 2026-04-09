@@ -141,10 +141,10 @@ class S3:
     """S3 client wrapper for upload/download/delete operations."""
 
     def __init__(self, bucket: str | None = None):
-        self.bucket = bucket or os.getenv("RUNPOD_S3_BUCKET")
+        self.bucket = bucket or os.getenv("CLX_S3_BUCKET")
         if not self.bucket:
             raise ValueError(
-                "S3 bucket must be provided or set via RUNPOD_S3_BUCKET env var"
+                "S3 bucket must be provided or set via CLX_S3_BUCKET env var"
             )
         self._client = None
 
@@ -154,10 +154,10 @@ class S3:
         if self._client is None:
             self._client = boto3.client(
                 "s3",
-                endpoint_url=os.getenv("RUNPOD_S3_ENDPOINT_URL"),
-                aws_access_key_id=os.getenv("RUNPOD_S3_ACCESS_KEY_ID"),
-                aws_secret_access_key=os.getenv("RUNPOD_S3_SECRET_ACCESS_KEY"),
-                region_name=os.getenv("RUNPOD_S3_REGION"),
+                endpoint_url=os.getenv("CLX_S3_ENDPOINT_URL"),
+                aws_access_key_id=os.getenv("CLX_S3_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.getenv("CLX_S3_SECRET_ACCESS_KEY"),
+                region_name=os.getenv("CLX_S3_REGION"),
             )
         return self._client
 
