@@ -967,20 +967,13 @@
                                         <i class="fas" :class="label.instructions?.trim() ? 'fa-circle-check' : 'fa-circle'"></i>
                                         <span x-text="label.instructions?.trim() ? 'Instructions' : 'Needs instructions'"></span>
                                     </span>
-                                    <span x-show="label.finetune_status === 'completed'" class="flex items-center gap-1.5 text-[11px] text-indigo-400">
-                                        <i class="fas fa-circle-check text-[9px]"></i> Model
+                                    <span class="flex items-center gap-1.5 text-[11px]" :class="label.finetune_status === 'completed' ? 'text-emerald-500' : 'text-slate-600'">
+                                        <i class="fas" :class="label.finetune_status === 'completed' ? 'fa-circle-check' : (label.finetune_status === 'in_progress' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+                                        <span x-text="label.finetune_status === 'completed' ? 'Finetuned' : (label.finetune_status === 'in_progress' ? 'Training' : 'Needs finetune')"></span>
                                     </span>
-                                    <span x-show="label.finetune_status === 'in_progress'" class="flex items-center gap-1.5 text-[11px] text-indigo-400">
-                                        <i class="fas fa-spinner fa-spin text-[9px]"></i> Training
-                                    </span>
-                                    <span x-show="label.finetune_status === 'error'" class="flex items-center gap-1.5 text-[11px] text-red-400">
-                                        <i class="fas fa-circle-xmark text-[9px]"></i> Error
-                                    </span>
-                                    <span x-show="label.finetune_status === 'completed' && label.predicted_at && label.predicted_at >= label.finetuned_at" class="flex items-center gap-1.5 text-[11px] text-teal-400">
-                                        <i class="fas fa-circle-check text-[9px]"></i> Predicted
-                                    </span>
-                                    <span x-show="label.finetune_status === 'completed' && (!label.predicted_at || label.predicted_at < label.finetuned_at)" class="flex items-center gap-1.5 text-[11px] text-slate-500">
-                                        <i class="fas fa-circle text-[9px]"></i> Needs predictions
+                                    <span x-show="label.finetune_status === 'completed'" class="flex items-center gap-1.5 text-[11px]" :class="label.predicted_at && label.finetuned_at && label.predicted_at >= label.finetuned_at ? 'text-emerald-500' : 'text-slate-600'">
+                                        <i class="fas" :class="label.predicted_at && label.finetuned_at && label.predicted_at >= label.finetuned_at ? 'fa-circle-check' : 'fa-circle'"></i>
+                                        <span x-text="label.predicted_at && label.finetuned_at && label.predicted_at >= label.finetuned_at ? 'Predicted' : 'Needs predictions'"></span>
                                     </span>
                                 </div>
                             </div>
