@@ -299,6 +299,7 @@ class Label(Base):
             "per_device_train_batch_size": batch_size,
             "per_device_eval_batch_size": batch_size,
             "gradient_accumulation_steps": grad_accum,
+            "num_train_epochs": 3,
             "eval_strategy": "steps",
             "eval_steps": checkpoint_steps,
             "save_steps": checkpoint_steps,
