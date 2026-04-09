@@ -361,9 +361,9 @@ class ClearToolHistory(Tool):
         MessageModel.objects.filter(
             thread=agent.thread, hidden=False, data__role="tool"
         ).update(hidden=True)
-        MessageModel.objects.filter(
-            thread=agent.thread, hidden=False
-        ).filter(data__has_key="tool_calls").update(hidden=True)
+        MessageModel.objects.filter(thread=agent.thread, hidden=False).filter(
+            data__has_key="tool_calls"
+        ).update(hidden=True)
 
         return "Tool history cleared from context."
 
@@ -380,8 +380,7 @@ class AskUser(Tool):
     question: str = Field(description="The question to ask the user")
     options: list[str] = Field(
         description=(
-            "A list of mutually exclusive answer options "
-            "(user picks one)"
+            "A list of mutually exclusive answer options (user picks one)"
         )
     )
 

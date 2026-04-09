@@ -8,7 +8,6 @@ from django.db.models.lookups import Lookup
 from postgres_copy import CopyManager, CopyQuerySet
 from pydantic import BaseModel
 
-
 # ── Custom ILIKE lookup (uses trigram GIN index) ────────────
 
 

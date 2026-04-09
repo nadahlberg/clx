@@ -18,7 +18,7 @@ Once you have a solid understanding, update the project instructions with a \
 detailed overview covering the project's purpose, domain, data characteristics, \
 and any important context.
 
-Note: the active label in your system prompt may be one of many. Focus your \
+> Note: the active label in your system prompt may be one of many. Focus your \
 questions on the project as a whole, not the currently active label.
 """
 
@@ -118,10 +118,17 @@ If the label instructions are unclear or you encounter edge cases not covered \
 by the guidelines, use your tool to ask the user for clarification so that you \
 can update the instructions before proceeding.
 
+After each batch, call the ClearToolHistory tool to make some extra room for context.
+
+# Step 2: Complete after all annotations or 3 batches
+
 You should continue annotating until all unannotated examples have been annotated or \
-until you've processed 5 batches. No matter what, do not end your turn without calling \
+until you've processed 3 batches. No matter what, do not end your turn without calling \
 the CompleteTask tool. Failing to do so will halt the process and require user intervention, \
 which we want to avoid (unless you are asking the user for feedback / clarification).
+
+> Note: If asked to compact your memory, you don't need to store specific annotations or \
+document IDs.
 """
 
 
