@@ -66,6 +66,20 @@ STATIC_URL = "/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "django.db.backends": {
+            "level": os.getenv("SQL_LOG_LEVEL", "WARNING"),
+            "handlers": ["console"],
+        },
+    },
+}
+
 # -- LLM Model Configuration --
 
 DEFAULT_MODEL = "openai/gpt-5.4"
