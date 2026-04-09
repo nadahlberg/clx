@@ -1,7 +1,7 @@
 import json
 
 from django.conf import settings as django_settings
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
@@ -172,18 +172,27 @@ def project_labels_api(request, project_id):
                     annotations__value="skip", annotations__source="agent"
                 ),
             ),
+            latest_annotation_at=Max(
+                "annotations__updated_at",
+                filter=Q(
+                    annotations__source="agent",
+                    annotations__value__in=["yes", "no"],
+                ),
+            ),
         )
     )
     stats_by_label = {}
     for row in stats_qs:
         lid = str(row["label_id"])
         total = row["total"]
+        lat = row["latest_annotation_at"]
         stats_by_label[lid] = {
             "total": total,
             "yes": row["yes"],
             "no": row["no"],
             "skip": row["skip"],
             "unannotated": total - row["yes"] - row["no"] - row["skip"],
+            "latest_annotation_at": lat.isoformat() if lat else None,
         }
 
     return JsonResponse(

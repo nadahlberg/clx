@@ -992,8 +992,13 @@
                                         <i class="fas" :class="label.instructions?.trim() ? 'fa-circle-check' : 'fa-circle'"></i>
                                         Instructions
                                     </span>
-                                    <span class="flex items-center gap-1.5 text-[11px]" :class="label.finetune_status === 'completed' ? 'text-emerald-500' : 'text-slate-600'">
-                                        <i class="fas" :class="label.finetune_status === 'completed' ? 'fa-circle-check' : (label.finetune_status === 'in_progress' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+                                    <span class="flex items-center gap-1.5 text-[11px]"
+                                          :class="label.finetune_status === 'completed'
+                                              ? (label.finetuned_at && label.stats?.latest_annotation_at && label.finetuned_at < label.stats.latest_annotation_at ? 'text-amber-400' : 'text-emerald-500')
+                                              : 'text-slate-600'">
+                                        <i class="fas" :class="label.finetune_status === 'completed'
+                                            ? (label.finetuned_at && label.stats?.latest_annotation_at && label.finetuned_at < label.stats.latest_annotation_at ? 'fa-circle' : 'fa-circle-check')
+                                            : (label.finetune_status === 'in_progress' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
                                         Finetuned
                                     </span>
                                     <span class="flex items-center gap-1.5 text-[11px]" :class="label.predicted_at && label.finetuned_at && label.predicted_at >= label.finetuned_at ? 'text-emerald-500' : 'text-slate-600'">
