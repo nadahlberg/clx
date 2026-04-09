@@ -284,7 +284,14 @@ class Annotate(Tool):
         )
 
         missing = [did for did in doc_ids if did not in ld_map]
-        valid = [a for a in self.annotations if a.document_id in ld_map]
+        # Deduplicate by document_id (last wins) to avoid
+        # ON CONFLICT DO UPDATE hitting the same row twice.
+        valid_by_id = {
+            a.document_id: a
+            for a in self.annotations
+            if a.document_id in ld_map
+        }
+        valid = list(valid_by_id.values())
 
         # Bulk upsert annotations for valid docs.
         if valid:
