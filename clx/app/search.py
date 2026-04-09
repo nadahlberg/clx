@@ -176,7 +176,7 @@ def build_q(query: dict) -> Q:
         case "contains":
             return Q(text__ilike=f"%{query['value']}%")
         case "startsWith":
-            return Q(text_prefix__istartswith=query["value"])
+            return Q(text_prefix__ilike=f"{query['value']}%")
         case "not":
             return ~build_q(query["query"])
         case "or":
