@@ -123,8 +123,11 @@ _last_label = {}  # project_id -> label_id
 
 def _process_cycle():
     """Run one autopilot cycle across all enabled projects."""
+    from django.db import close_old_connections
+
     from clx.app.models import Project, Task
 
+    close_old_connections()
     projects = Project.objects.filter(autopilot_enabled=True)
     for project in projects:
         project.update_tasks()
@@ -192,8 +195,11 @@ def _process_cycle():
 
 def _cleanup():
     """Clear stale locks and reset in-progress tasks."""
+    from django.db import close_old_connections
+
     from clx.app.models import Task, Thread
 
+    close_old_connections()
     Thread.objects.filter(autopilot_locked=True).update(autopilot_locked=False)
     Task.objects.filter(status=Task.Status.IN_PROGRESS).update(
         status=Task.Status.PENDING
