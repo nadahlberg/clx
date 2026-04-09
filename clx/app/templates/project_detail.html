@@ -34,6 +34,7 @@
          filterAnnotation: null,
          filterPrediction: null,
          sortOrder: 'shuffle',
+         sortDropdownOpen: false,
          promptDropdownOpen: false,
          prompts: [],
          editingPrompt: null,
@@ -929,29 +930,44 @@
                     </span>
                 </div>
                 <!-- Sort + Pagination (floating top-right) -->
-                <div class="absolute top-3 right-3 z-10 flex items-center rounded-md bg-slate-800/90 shadow-md border border-slate-700 overflow-hidden">
-                    <!-- Sort selector -->
-                    <template x-for="opt in [{id:'shuffle',label:'Shuffle'},{id:'tricky',label:'Tricky'}]" :key="opt.id">
-                        <button @click="if (sortOrder !== opt.id) { sortOrder = opt.id; page = 1; fetchDocs(); }"
-                                class="px-2.5 py-1 text-[11px] font-medium transition-colors border-r border-slate-700"
-                                :class="sortOrder === opt.id ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'"
-                                x-text="opt.label">
+                <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                    <!-- Sort dropdown -->
+                    <div class="relative">
+                        <button @click="sortDropdownOpen = !sortDropdownOpen"
+                                class="px-2.5 py-1 text-[11px] font-medium rounded-md bg-slate-800/90 shadow-md border border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5">
+                            <i class="fas fa-arrow-down-short-wide text-[9px]"></i>
+                            <span x-text="sortOrder === 'shuffle' ? 'Shuffle' : 'Tricky'"></span>
+                            <i class="fas fa-chevron-down text-[8px] text-slate-600"></i>
                         </button>
-                    </template>
+                        <div x-show="sortDropdownOpen" x-cloak
+                             @click.outside="sortDropdownOpen = false"
+                             class="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg overflow-hidden min-w-[100px]">
+                            <template x-for="opt in [{id:'shuffle',label:'Shuffle'},{id:'tricky',label:'Tricky'}]" :key="opt.id">
+                                <button @click="sortOrder = opt.id; sortDropdownOpen = false; page = 1; fetchDocs();"
+                                        class="w-full text-left px-3 py-1.5 text-[11px] font-medium transition-colors flex items-center gap-2"
+                                        :class="sortOrder === opt.id ? 'text-indigo-400' : 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'">
+                                    <i class="fas fa-check text-[8px]" :class="sortOrder === opt.id ? 'text-indigo-400' : 'invisible'"></i>
+                                    <span x-text="opt.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
                     <!-- Pagination -->
-                    <button @click="page--; fetchDocs()"
-                            :disabled="page <= 1"
-                            class="px-2 py-1 text-xs transition-colors"
-                            :class="page <= 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span class="text-[11px] text-slate-500 px-0.5" x-text="page"></span>
-                    <button @click="page++; fetchDocs()"
-                            :disabled="!hasNext"
-                            class="px-2 py-1 text-xs transition-colors"
-                            :class="!hasNext ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
+                    <div class="flex items-center rounded-md bg-slate-800/90 shadow-md border border-slate-700 overflow-hidden">
+                        <button @click="page--; fetchDocs()"
+                                :disabled="page <= 1"
+                                class="px-2 py-1 text-xs transition-colors"
+                                :class="page <= 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="text-[11px] text-slate-500 px-0.5" x-text="page"></span>
+                        <button @click="page++; fetchDocs()"
+                                :disabled="!hasNext"
+                                class="px-2 py-1 text-xs transition-colors"
+                                :class="!hasNext ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-slate-200'">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
                 </div>
                 <!-- Scrollable document area -->
                 <div class="flex-1 overflow-y-auto pt-12 pb-32 scrollable-panel scrollable-dark">
