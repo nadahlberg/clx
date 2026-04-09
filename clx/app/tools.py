@@ -17,6 +17,11 @@ class Search(Tool):
 
     Build queries using Contains, StartsWith, Not, Or, and And nodes.
     All text matching is case-insensitive.
+
+    Performance tip: complex queries with many OR branches are expensive.
+    Prefer running several simple searches over one large compound query.
+    That said, don't shy away from And/Not/Or when you genuinely need
+    the expressive power — just keep each individual query focused.
     """
 
     query: Query | None = Field(
