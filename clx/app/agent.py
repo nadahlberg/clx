@@ -2,6 +2,7 @@ import logging
 
 import litellm
 from django.db.models import Sum
+from shortuuid import uuid
 
 litellm.set_verbose = True
 
@@ -208,6 +209,7 @@ class CLXAgent(Agent):
             return
         objects = [
             Message(
+                id=uuid(),
                 thread=self.thread,
                 data=msg,
                 num_tokens=message_tokens(msg),
