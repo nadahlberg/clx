@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from django.db.models import F as models_F
 from django.db.models import OuterRef, Q, Subquery
 from django.db.models.fields import Field as DjangoField
 from django.db.models.lookups import Lookup
@@ -242,6 +243,36 @@ class SearchQuerySet(CopyQuerySet):
         if value == "any":
             return qs.filter(annotation_value__isnull=False)
         return qs.filter(annotation_value=value)
+
+    def filter_prediction(
+        self, label_id: str, value: str
+    ) -> SearchQuerySet:
+        """Filter documents by prediction value for a label.
+
+        value: 'yes', 'no', 'any', or 'disagree' (prediction != agent annotation).
+        """
+        from clx.app.models import LabelDocument
+
+        qs = self.training_examples(label_id)
+        qs = qs.annotate(
+            prediction_value=Subquery(
+                LabelDocument.objects.filter(
+                    document=OuterRef("pk"),
+                    label_id=label_id,
+                ).values("prediction")[:1]
+            )
+        )
+        if value == "disagree":
+            qs = qs.with_annotation(label_id, "agent")
+            return qs.filter(
+                prediction_value__isnull=False,
+                annotation_value__isnull=False,
+            ).exclude(prediction_value=models_F("annotation_value"))
+        if value == "any":
+            return qs.exclude(prediction_value="").filter(
+                prediction_value__isnull=False
+            )
+        return qs.filter(prediction_value=value)
 
 
 class SearchManager(CopyManager.from_queryset(SearchQuerySet)):

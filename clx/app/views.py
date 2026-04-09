@@ -80,8 +80,13 @@ def _filtered_documents(project, request):
         documents = documents.query_string(qs)
     label_id = request.GET.get("label", "").strip()
     annotation = request.GET.get("annotation", "").strip()
+    prediction = request.GET.get("prediction", "").strip()
     has_annotation_col = False
-    if annotation and label_id:
+    if prediction and label_id:
+        documents = documents.filter_prediction(label_id, prediction)
+        if prediction == "disagree":
+            has_annotation_col = True
+    elif annotation and label_id:
         documents = documents.filter_annotation(label_id, annotation)
         has_annotation_col = True
     elif label_id:

@@ -32,6 +32,7 @@
          editingLabelInstructions: false,
          filterLabelOnly: false,
          filterAnnotation: null,
+         filterPrediction: null,
          promptDropdownOpen: false,
          prompts: [],
          editingPrompt: null,
@@ -177,8 +178,9 @@
          _filterParams() {
              const p = new URLSearchParams();
              if (this.queryString.trim()) p.set('q', this.queryString.trim());
-             if ((this.filterLabelOnly || this.filterAnnotation) && this.activeLabel) p.set('label', this.activeLabel.id);
+             if ((this.filterLabelOnly || this.filterAnnotation || this.filterPrediction) && this.activeLabel) p.set('label', this.activeLabel.id);
              if (this.filterAnnotation && this.activeLabel) p.set('annotation', this.filterAnnotation);
+             if (this.filterPrediction && this.activeLabel) p.set('prediction', this.filterPrediction);
              return p.toString();
          },
          search() {
@@ -614,21 +616,36 @@
                           rows="1"
                           placeholder="e.g. foo, bar | baz"
                           class="w-full bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 mb-4 resize-none overflow-hidden placeholder:text-slate-600"></textarea>
-                <label class="text-xs font-medium text-slate-500 mb-1.5 block">Training Data</label>
-                <button @click="filterLabelOnly = !filterLabelOnly; if (!filterLabelOnly) filterAnnotation = null; search()"
+                <label class="text-xs font-medium text-slate-500 mb-1.5 block">Annotations</label>
+                <button @click="filterLabelOnly = !filterLabelOnly; if (!filterLabelOnly) { filterAnnotation = null; filterPrediction = null; } search()"
                         class="w-full px-3 py-1.5 text-xs font-medium rounded-md border transition-colors flex items-center justify-center gap-1.5"
                         :class="filterLabelOnly || filterAnnotation ? 'bg-teal-600 border-teal-600 text-white hover:bg-teal-500 hover:border-teal-500' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'">
                     <i class="fas fa-tag text-[10px]"></i> Train Examples
                 </button>
                 <div class="flex rounded-md overflow-hidden ring-1 ring-slate-700 mt-2">
                     <template x-for="(opt, idx) in ['yes', 'no', 'skip', 'none', 'any']" :key="opt">
-                        <button @click="filterAnnotation = filterAnnotation === opt ? null : opt; if (filterAnnotation) filterLabelOnly = true; search()"
+                        <button @click="filterAnnotation = filterAnnotation === opt ? null : opt; if (filterAnnotation) { filterLabelOnly = true; filterPrediction = null; } search()"
                                 class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors capitalize"
                                 :class="[
                                     filterAnnotation === opt
                                         ? (opt === 'yes' ? 'bg-emerald-600 text-white' : opt === 'no' ? 'bg-red-600 text-white' : opt === 'skip' ? 'bg-amber-600 text-white' : opt === 'any' ? 'bg-indigo-600 text-white' : 'bg-slate-600 text-white')
                                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
                                     idx < 4 ? 'border-r border-slate-700' : ''
+                                ]"
+                                x-text="opt">
+                        </button>
+                    </template>
+                </div>
+                <label class="text-xs font-medium text-slate-500 mb-1.5 mt-4 block">Predictions</label>
+                <div class="flex rounded-md overflow-hidden ring-1 ring-slate-700">
+                    <template x-for="(opt, idx) in ['yes', 'no', 'any', 'disagree']" :key="opt">
+                        <button @click="filterPrediction = filterPrediction === opt ? null : opt; if (filterPrediction) { filterLabelOnly = true; filterAnnotation = null; } search()"
+                                class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors capitalize"
+                                :class="[
+                                    filterPrediction === opt
+                                        ? (opt === 'yes' ? 'bg-emerald-600 text-white' : opt === 'no' ? 'bg-red-600 text-white' : opt === 'disagree' ? 'bg-orange-600 text-white' : 'bg-indigo-600 text-white')
+                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
+                                    idx < 3 ? 'border-r border-slate-700' : ''
                                 ]"
                                 x-text="opt">
                         </button>
