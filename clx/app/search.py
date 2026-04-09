@@ -3,8 +3,27 @@ from __future__ import annotations
 from typing import Literal
 
 from django.db.models import OuterRef, Q, Subquery
+from django.db.models.fields import Field as DjangoField
+from django.db.models.lookups import Lookup
 from postgres_copy import CopyManager, CopyQuerySet
 from pydantic import BaseModel
+
+
+# ── Custom ILIKE lookup (uses trigram GIN index) ────────────
+
+
+class ILike(Lookup):
+    """Case-insensitive LIKE using ILIKE — supported by pg_trgm GIN index."""
+
+    lookup_name = "ilike"
+
+    def as_sql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
+        return f"{lhs} ILIKE {rhs}", [*lhs_params, *rhs_params]
+
+
+DjangoField.register_lookup(ILike)
 
 # ── Query Schema ─────────────────────────────────────────────
 
@@ -151,12 +170,12 @@ class _Parser:
 def build_q(query: dict) -> Q:
     """Convert a query dict into a Django Q object.
 
+    Uses ILIKE for contains (trigram GIN index compatible).
     startsWith uses text_prefix for better index utilization.
-    All other filters use text.
     """
     match query["type"]:
         case "contains":
-            return Q(text__icontains=query["value"])
+            return Q(text__ilike=f"%{query['value']}%")
         case "startsWith":
             return Q(text_prefix__istartswith=query["value"])
         case "not":
