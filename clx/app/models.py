@@ -154,16 +154,23 @@ class Project(Base):
         if total == 0:
             return
 
-        exported = 0
-        for offset in tqdm(
-            range(0, total, batch_size),
-            desc="Exporting docs",
-            total=(total + batch_size - 1) // batch_size,
-        ):
-            batch = qs.values_list("id", "text")[offset : offset + batch_size]
-            df = pd.DataFrame(list(batch), columns=["document_id", "text"])
-            pd_save_or_append(df, docs_path)
-            exported += len(df)
+        try:
+            for offset in tqdm(
+                range(0, total, batch_size),
+                desc="Exporting docs",
+                total=(total + batch_size - 1) // batch_size,
+            ):
+                batch = qs.values_list("id", "text")[
+                    offset : offset + batch_size
+                ]
+                df = pd.DataFrame(
+                    list(batch), columns=["document_id", "text"]
+                )
+                pd_save_or_append(df, docs_path)
+        except Exception:
+            docs_path.unlink(missing_ok=True)
+            exported_path.unlink(missing_ok=True)
+            raise
 
         now = datetime.now(dt_tz.utc).isoformat()
         exported_path.write_text(now)
