@@ -1,6 +1,8 @@
 import json
 import random
+from datetime import datetime, timezone as dt_tz
 from io import StringIO
+from pathlib import Path
 
 import pandas as pd
 from django.conf import settings as django_settings
@@ -9,8 +11,10 @@ from django.db import models
 from django.utils import timezone
 from django_shortuuid.fields import ShortUUIDField
 from shortuuid import uuid
+from tqdm import tqdm
 
-from clx.utils import generate_hash
+from clx.settings import CLX_HOME
+from clx.utils import generate_hash, pd_save_or_append
 
 from .search import SearchManager
 
@@ -121,24 +125,13 @@ class Project(Base):
     @property
     def project_dir(self):
         """Return the project directory path."""
-        from pathlib import Path
-
-        from clx.settings import CLX_HOME
-
         return Path(CLX_HOME) / "projects" / str(self.id)
 
-    def export_data(self, batch_size=10_000):
+    def export_data(self, batch_size=100_000):
         """Export documents to docs.csv in the project directory.
 
         Only exports documents created since the last export.
         """
-        from datetime import datetime, timezone as dt_tz
-        from pathlib import Path
-
-        from tqdm import tqdm
-
-        from clx.utils import pd_save_or_append
-
         self.project_dir.mkdir(parents=True, exist_ok=True)
         docs_path = self.project_dir / "docs.csv"
         exported_path = self.project_dir / "exported.txt"
