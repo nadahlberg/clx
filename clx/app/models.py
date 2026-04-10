@@ -167,7 +167,7 @@ class Project(Base):
                     list(batch), columns=["document_id", "text"]
                 )
                 pd_save_or_append(data, docs_path)
-        except Exception:
+        except BaseException:
             docs_path.unlink(missing_ok=True)
             exported_path.unlink(missing_ok=True)
             raise
