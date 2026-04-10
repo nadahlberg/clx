@@ -118,6 +118,63 @@ class Project(Base):
             **kwargs,
         )
 
+    @property
+    def project_dir(self):
+        """Return the project directory path."""
+        from pathlib import Path
+
+        from clx.settings import CLX_HOME
+
+        return Path(CLX_HOME) / "projects" / str(self.id)
+
+    def export_data(self, batch_size=10_000):
+        """Export documents to docs.csv in the project directory.
+
+        Only exports documents created since the last export.
+        """
+        from datetime import datetime, timezone as dt_tz
+        from pathlib import Path
+
+        from tqdm import tqdm
+
+        from clx.utils import pd_save_or_append
+
+        self.project_dir.mkdir(parents=True, exist_ok=True)
+        docs_path = self.project_dir / "docs.csv"
+        exported_path = self.project_dir / "exported.txt"
+
+        # Check last export time.
+        last_export = None
+        if exported_path.exists():
+            try:
+                last_export = datetime.fromisoformat(
+                    exported_path.read_text().strip()
+                )
+            except (ValueError, OSError):
+                pass
+
+        qs = self.documents.order_by("created_at")
+        if last_export:
+            qs = qs.filter(created_at__gt=last_export)
+
+        total = qs.count()
+        if total == 0:
+            return
+
+        exported = 0
+        for offset in tqdm(
+            range(0, total, batch_size),
+            desc="Exporting docs",
+            total=(total + batch_size - 1) // batch_size,
+        ):
+            batch = qs.values_list("id", "text")[offset : offset + batch_size]
+            df = pd.DataFrame(list(batch), columns=["document_id", "text"])
+            pd_save_or_append(df, docs_path)
+            exported += len(df)
+
+        now = datetime.now(dt_tz.utc).isoformat()
+        exported_path.write_text(now)
+
     def update_tasks(self):
         """Sync tasks based on current project/label state.
 
