@@ -1,6 +1,6 @@
 import json
 import random
-from datetime import datetime, timezone as dt_tz
+from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 
@@ -163,16 +163,16 @@ class Project(Base):
                 batch = qs.values_list("id", "text")[
                     offset : offset + batch_size
                 ]
-                df = pd.DataFrame(
+                data = pd.DataFrame(
                     list(batch), columns=["document_id", "text"]
                 )
-                pd_save_or_append(df, docs_path)
+                pd_save_or_append(data, docs_path)
         except Exception:
             docs_path.unlink(missing_ok=True)
             exported_path.unlink(missing_ok=True)
             raise
 
-        now = datetime.now(dt_tz.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         exported_path.write_text(now)
 
     def update_tasks(self):
@@ -547,7 +547,7 @@ class Label(Base):
             self.save(update_fields=["prediction_stats", "updated_at"])
             return
 
-        predictions = {ld_id: pred for ld_id, pred in ld_data}
+        predictions = dict(ld_data)
         ld_ids = list(predictions.keys())
 
         annotated = dict(
@@ -638,7 +638,10 @@ class LabelDocument(Base):
         "Document", on_delete=models.CASCADE, related_name="label_documents"
     )
     prediction = models.CharField(
-        max_length=3, blank=True, default="", choices=[("yes", "yes"), ("no", "no")]
+        max_length=3,
+        blank=True,
+        default="",
+        choices=[("yes", "yes"), ("no", "no")],
     )
     prediction_confidence = models.FloatField(null=True, blank=True)
 

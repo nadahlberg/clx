@@ -118,7 +118,11 @@ class Search(Tool):
 
         num_results = min(self.num_results, 1000)
         t0 = time.time()
-        rows = list(documents.values_list("id", "text")[self.offset:self.offset + num_results])
+        rows = list(
+            documents.values_list("id", "text")[
+                self.offset : self.offset + num_results
+            ]
+        )
         db_elapsed = time.time() - t0
         query_desc = self.query.model_dump() if self.query else "all"
         logger.debug(

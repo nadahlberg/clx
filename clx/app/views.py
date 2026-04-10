@@ -1,7 +1,8 @@
 import json
 
 from django.conf import settings as django_settings
-from django.db.models import Count, F as models_F, Max, OuterRef, Q, Subquery, Sum
+from django.db.models import Count, Max, OuterRef, Q, Subquery, Sum
+from django.db.models import F as models_F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
@@ -704,9 +705,7 @@ def finetune_label_api(request, project_id, label_id):
         job_id = label.finetune(training_args=training_args)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
-    return JsonResponse(
-        {"job_id": job_id, "status": label.finetune_status}
-    )
+    return JsonResponse({"job_id": job_id, "status": label.finetune_status})
 
 
 @require_GET
@@ -775,9 +774,7 @@ def finetune_status_api(request, project_id, label_id):
                 )
             elif status_data["status"] in ("FAILED", "CANCELLED"):
                 label.finetune_status = "error"
-                label.save(
-                    update_fields=["finetune_status", "updated_at"]
-                )
+                label.save(update_fields=["finetune_status", "updated_at"])
             else:
                 progress = status_data.get("output", {})
         except Exception:

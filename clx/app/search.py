@@ -267,9 +267,7 @@ class SearchQuerySet(CopyQuerySet):
             ),
         )
 
-    def filter_prediction(
-        self, label_id: str, value: str
-    ) -> SearchQuerySet:
+    def filter_prediction(self, label_id: str, value: str) -> SearchQuerySet:
         """Filter documents by prediction value for a label.
 
         value: 'yes', 'no', 'any', or 'disagree' (prediction != agent annotation).
