@@ -50,6 +50,10 @@ urlpatterns = [
         views.finetune_label_api,
     ),
     path(
+        "api/projects/<str:project_id>/labels/<str:label_id>/finetune/cancel",
+        views.cancel_finetune_api,
+    ),
+    path(
         "api/projects/<str:project_id>/labels/<str:label_id>/finetune/status",
         views.finetune_status_api,
     ),

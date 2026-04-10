@@ -688,6 +688,38 @@ def predict_label_api(request, project_id, label_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def cancel_finetune_api(request, project_id, label_id):
+    """POST: cancel an in-progress finetune job."""
+    import os
+
+    import requests as http_requests
+
+    project = get_object_or_404(Project, id=project_id)
+    label = get_object_or_404(Label, id=label_id, project=project)
+    if label.finetune_status != "in_progress":
+        return JsonResponse(
+            {"error": "No finetune in progress."}, status=400
+        )
+
+    endpoint_id = os.getenv("RUNPOD_FINETUNE_ENDPOINT_ID")
+    api_key = os.getenv("RUNPOD_API_KEY")
+    if endpoint_id and api_key and label.finetune_id:
+        try:
+            http_requests.post(
+                f"https://api.runpod.ai/v2/{endpoint_id}/cancel/{label.finetune_id}",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10,
+            )
+        except Exception:
+            pass
+
+    label.finetune_status = "error"
+    label.save(update_fields=["finetune_status", "updated_at"])
+    return JsonResponse({"status": "error"})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def finetune_label_api(request, project_id, label_id):
     """POST: kick off a finetuning job for a label."""
     project = get_object_or_404(Project, id=project_id)
