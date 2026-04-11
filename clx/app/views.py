@@ -697,9 +697,7 @@ def cancel_finetune_api(request, project_id, label_id):
     project = get_object_or_404(Project, id=project_id)
     label = get_object_or_404(Label, id=label_id, project=project)
     if label.finetune_status != "in_progress":
-        return JsonResponse(
-            {"error": "No finetune in progress."}, status=400
-        )
+        return JsonResponse({"error": "No finetune in progress."}, status=400)
 
     endpoint_id = os.getenv("RUNPOD_FINETUNE_ENDPOINT_ID")
     api_key = os.getenv("RUNPOD_API_KEY")
